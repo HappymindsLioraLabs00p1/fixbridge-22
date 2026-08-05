@@ -15,3 +15,11 @@ target/
 *.iml
 coverage/
 .gradle/
+
+# Terraform (keep .terraform.lock.hcl committed)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

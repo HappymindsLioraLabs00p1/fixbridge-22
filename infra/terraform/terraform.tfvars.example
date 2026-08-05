@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars (gitignored) per environment and fill in.
+project_id  = "your-gcp-project-staging"
+region      = "us-east1"
+zone        = "us-east1-b"
+environment = "staging"
+
+# App secrets are stored in Secret Manager. Supply via a secure channel (e.g. TF_VAR_app_secrets,
+# a CI secret, or `-var-file` kept out of version control) — never commit real values.
+# app_secrets = {
+#   "jwt-secret"           = "..."
+#   "stripe-secret-key"    = "..."
+#   "stripe-webhook-secret"= "..."
+#   "openai-api-key"       = "..."
+#   "claude-api-key"       = "..."
+# }

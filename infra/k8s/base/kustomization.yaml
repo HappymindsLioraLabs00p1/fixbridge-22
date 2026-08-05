@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - config.yaml
+  - backend.yaml
+  - frontend.yaml
+  - networking.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: fixbridge
+
+# NOTE: image pinning is done in the overlays (they set the real Artifact Registry name + tag for
+# the placeholder names `fixbridge-backend` / `fixbridge-frontend`). The base leaves them unresolved.

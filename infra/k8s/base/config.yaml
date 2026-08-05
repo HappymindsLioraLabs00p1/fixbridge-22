@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fixbridge
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fixbridge-backend
+  namespace: fixbridge
+  annotations:
+    # Overlays set this to the Terraform-created GCP SA: fixbridge-<env>-be@<project>.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: REPLACED_BY_OVERLAY
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fixbridge-config
+  namespace: fixbridge
+data:
+  # Non-secret config. Overlays patch environment-specific values (endpoints, host, bucket).
+  REDIS_HOST: "REPLACED_BY_OVERLAY"
+  REDIS_PORT: "6379"
+  DB_USER: "fixbridge"
+  GCS_BUCKET: "REPLACED_BY_OVERLAY"
+  AI_PROVIDER: "openai"
+  OPENAI_MODEL: "gpt-5.6-terra"
+  CLAUDE_MODEL: "claude-sonnet-5"
+  # Real integrations in the cluster — the stub is only for local frontend-first dev.
+  INTEGRATIONS_STUB_MODE: "false"
+  CORS_ORIGINS: "https://fixbridge.example.com"
+  SIGNED_URL_TTL: "15"

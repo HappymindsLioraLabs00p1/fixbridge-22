@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Fill these from `terraform output` for the staging project, then apply:
+#   kubectl apply -k infra/k8s/overlays/staging
+
+resources:
+  - ../../base
+  - secretproviderclass.yaml
+
+images:
+  - name: fixbridge-backend
+    newName: us-east1-docker.pkg.dev/PROJECT_ID/fixbridge-docker/backend
+    newTag: staging
+  - name: fixbridge-frontend
+    newName: us-east1-docker.pkg.dev/PROJECT_ID/fixbridge-docker/frontend
+    newTag: staging
+
+patches:
+  - target: { kind: ServiceAccount, name: fixbridge-backend }
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/iam.gke.io~1gcp-service-account
+        value: fixbridge-staging-be@PROJECT_ID.iam.gserviceaccount.com
+  - target: { kind: ConfigMap, name: fixbridge-config }
+    patch: |-
+      - op: replace
+        path: /data/REDIS_HOST
+        value: "REDIS_PRIVATE_IP"   # terraform output redis_host
+      - op: replace
+        path: /data/GCS_BUCKET
+        value: "PROJECT_ID-fixbridge-staging-media"
+      - op: replace
+        path: /data/CORS_ORIGINS
+        value: "https://staging.fixbridge.example.com"
+  - target: { kind: Ingress, name: fixbridge }
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.fixbridge.example.com
+  - target: { kind: ManagedCertificate, name: fixbridge-cert }
+    patch: |-
+      - op: replace
+        path: /spec/domains/0
+        value: staging.fixbridge.example.com
