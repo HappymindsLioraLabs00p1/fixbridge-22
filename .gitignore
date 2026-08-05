@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+target/
+*.class
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.iml
+coverage/
+.gradle/

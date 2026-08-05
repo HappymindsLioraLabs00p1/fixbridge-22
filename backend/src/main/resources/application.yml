@@ -1,0 +1,75 @@
+# FixBridge backend configuration.
+# NOTHING sensitive or brand-specific is hard-coded here — everything reads from environment
+# variables so staging and production stay separate and the platform can be rebranded in one place.
+
+spring:
+  application:
+    name: fixbridge-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fixbridge}
+    username: ${DB_USER:fixbridge}
+    password: ${DB_PASSWORD:fixbridge}
+  jpa:
+    hibernate:
+      ddl-auto: none              # schema is owned by Flyway; Hibernate never manages or validates DDL
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never        # never leak raw errors/stack traces to clients
+    include-stacktrace: never
+
+springdoc:
+  swagger-ui:
+    path: /docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+# ---- FixBridge application config (all overridable via env) ----
+fixbridge:
+  # Branding lives in ONE place; the frontend has its own mirror in src/config/brand.ts
+  brand:
+    name: ${BRAND_NAME:FixBridge}
+    support-email: ${BRAND_SUPPORT_EMAIL:support@example.com}
+    domain: ${BRAND_DOMAIN:example.com}
+    primary-color: ${BRAND_PRIMARY_COLOR:#1f6feb}
+  security:
+    jwt-secret: ${JWT_SECRET:change-me-dev-secret-change-me-dev-secret}
+    access-token-ttl-minutes: ${JWT_ACCESS_TTL:15}
+    refresh-token-ttl-days: ${JWT_REFRESH_TTL:14}
+    cors-allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  ai:
+    # provider + model names are configuration, changeable without a rebuild
+    provider: ${AI_PROVIDER:openai}            # openai | claude
+    openai:
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-5.6-terra}
+    claude:
+      base-url: ${CLAUDE_BASE_URL:https://api.anthropic.com/v1}
+      api-key: ${CLAUDE_API_KEY:}
+      model: ${CLAUDE_MODEL:claude-sonnet-5}
+    # when true (frontend-first phase), the AI + payment clients return deterministic stubs
+    stub-mode: ${INTEGRATIONS_STUB_MODE:true}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  storage:
+    bucket: ${GCS_BUCKET:fixbridge-dev}
+    signed-url-ttl-minutes: ${SIGNED_URL_TTL:15}

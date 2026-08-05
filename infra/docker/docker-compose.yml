@@ -1,0 +1,66 @@
+# Local full-stack: Postgres + Redis + backend + frontend. One command:
+#   docker compose -f infra/docker/docker-compose.yml up --build
+# Runs in frontend-first stub mode (no real Stripe/OpenAI/Claude keys required).
+
+name: fixbridge
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fixbridge
+      POSTGRES_USER: fixbridge
+      POSTGRES_PASSWORD: fixbridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fixbridge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../../backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/fixbridge
+      DB_USER: fixbridge
+      DB_PASSWORD: fixbridge
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: change-me-please-use-a-long-random-secret-string
+      CORS_ORIGINS: http://localhost:3000
+      INTEGRATIONS_STUB_MODE: "true"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ../../frontend
+    depends_on:
+      - backend
+    environment:
+      # NEXT_PUBLIC_* are baked at build time; for a real deploy set them as build args.
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+
+volumes:
+  db_data:
