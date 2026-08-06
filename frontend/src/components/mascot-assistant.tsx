@@ -10,6 +10,7 @@ const GREETING = "How may I help you?";
  * the visitor out loud (Web Speech API). Original artwork, not a trademarked character.
  */
 export function MascotAssistant() {
+  const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<"intro" | "corner">("intro");
   const [bubble, setBubble] = useState(false);
   const spokenOnce = useRef(false);
@@ -31,11 +32,8 @@ export function MascotAssistant() {
   }
 
   useEffect(() => {
-    const toCorner = setTimeout(() => setPhase("corner"), 2000);
-    const greet = setTimeout(() => {
-      setBubble(true);
-      speak();
-    }, 2700);
+    setMounted(true);
+
     // Browsers block audio until a gesture — greet on the first interaction as a fallback.
     const onGesture = () => {
       if (!spokenOnce.current) {
@@ -45,13 +43,36 @@ export function MascotAssistant() {
       window.removeEventListener("pointerdown", onGesture);
     };
     window.addEventListener("pointerdown", onGesture);
+
+    // Play the full splash only once per browser session; on later visits go straight to the corner.
+    let toCorner: ReturnType<typeof setTimeout> | undefined;
+    let greet: ReturnType<typeof setTimeout> | undefined;
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("fb-splash-seen") === "1";
+      sessionStorage.setItem("fb-splash-seen", "1");
+    } catch {
+      /* storage unavailable — fall back to always showing the splash */
+    }
+    if (seen) {
+      setPhase("corner");
+      setBubble(true);
+    } else {
+      toCorner = setTimeout(() => setPhase("corner"), 2000);
+      greet = setTimeout(() => {
+        setBubble(true);
+        speak();
+      }, 2700);
+    }
+
     return () => {
-      clearTimeout(toCorner);
-      clearTimeout(greet);
+      if (toCorner) clearTimeout(toCorner);
+      if (greet) clearTimeout(greet);
       window.removeEventListener("pointerdown", onGesture);
     };
   }, []);
 
+  if (!mounted) return null;
   const intro = phase === "intro";
 
   return (
