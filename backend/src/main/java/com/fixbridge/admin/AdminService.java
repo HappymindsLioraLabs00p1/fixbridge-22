@@ -41,12 +41,14 @@ public class AdminService {
     private final PricingEngine pricingEngine;
     private final PaymentService paymentService;
     private final com.fixbridge.notification.NotificationService notifications;
+    private final com.fixbridge.audit.AuditService audit;
 
     public AdminService(JobRepository jobs, JobService jobService, JobPricingRepository jobPricing,
                         ContractorRepository contractors, JobInvitationRepository invitations,
                         BidRepository bids, ProposalRepository proposals, PricingEngine pricingEngine,
                         PaymentService paymentService,
-                        com.fixbridge.notification.NotificationService notifications) {
+                        com.fixbridge.notification.NotificationService notifications,
+                        com.fixbridge.audit.AuditService audit) {
         this.jobs = jobs;
         this.jobService = jobService;
         this.jobPricing = jobPricing;
@@ -57,6 +59,7 @@ public class AdminService {
         this.pricingEngine = pricingEngine;
         this.paymentService = paymentService;
         this.notifications = notifications;
+        this.audit = audit;
     }
 
     /** Jobs that have paid for dispatch and are awaiting contractor assignment. */
@@ -123,6 +126,9 @@ public class AdminService {
         notifications.proposalSent(job.getCustomerId(), jobId, retail);
 
         long margin = retail - bid.getNetTotalCents();
+        audit.record(admin.id(), "proposal.publish", "proposal", proposal.getId(),
+                java.util.Map.of("jobId", jobId.toString(), "contractorNetCents", bid.getNetTotalCents(),
+                        "retailTotalCents", retail, "marginCents", margin));
         return new AdminDtos.AdminProposalView(proposal.getId(), jobId, bid.getNetTotalCents(),
                 retail, margin, proposal.getStatus());
     }

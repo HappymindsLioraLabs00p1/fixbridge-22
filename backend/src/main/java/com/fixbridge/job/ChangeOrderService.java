@@ -27,15 +27,18 @@ public class ChangeOrderService {
     private final ContractorRepository contractors;
     private final PricingEngine pricingEngine;
     private final com.fixbridge.notification.NotificationService notifications;
+    private final com.fixbridge.audit.AuditService audit;
 
     public ChangeOrderService(ChangeOrderRepository changeOrders, JobService jobService,
                               ContractorRepository contractors, PricingEngine pricingEngine,
-                              com.fixbridge.notification.NotificationService notifications) {
+                              com.fixbridge.notification.NotificationService notifications,
+                              com.fixbridge.audit.AuditService audit) {
         this.changeOrders = changeOrders;
         this.jobService = jobService;
         this.contractors = contractors;
         this.pricingEngine = pricingEngine;
         this.notifications = notifications;
+        this.audit = audit;
     }
 
     /** Contractor submits newly discovered work + confidential net cost; the job pauses for approval. */
@@ -70,6 +73,9 @@ public class ChangeOrderService {
         changeOrders.save(co);
         Job job = jobService.requireJob(co.getJobId());
         notifications.changeOrderSent(job.getCustomerId(), job.getId(), retail);
+        audit.record(admin.id(), "change_order.publish", "change_order", co.getId(),
+                java.util.Map.of("jobId", job.getId().toString(), "addedNetCents", co.getAddedNetCents(),
+                        "addedRetailCents", retail));
         return adminView(co);
     }
 

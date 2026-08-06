@@ -38,11 +38,13 @@ public class PaymentService {
     private final StripeClient stripe;
     private final JobService jobService;
     private final com.fixbridge.notification.NotificationService notifications;
+    private final com.fixbridge.audit.AuditService audit;
 
     public PaymentService(PaymentRepository payments, DispatchFeeRepository dispatchFees,
                           ProposalRepository proposals, BidRepository bids, ContractorRepository contractors,
                           TransferRepository transfers, StripeClient stripe, JobService jobService,
-                          com.fixbridge.notification.NotificationService notifications) {
+                          com.fixbridge.notification.NotificationService notifications,
+                          com.fixbridge.audit.AuditService audit) {
         this.payments = payments;
         this.dispatchFees = dispatchFees;
         this.proposals = proposals;
@@ -52,6 +54,7 @@ public class PaymentService {
         this.stripe = stripe;
         this.jobService = jobService;
         this.notifications = notifications;
+        this.audit = audit;
     }
 
     /** Customer pays the Service Assessment & Dispatch fee before a Managed contractor is dispatched. */
@@ -159,6 +162,9 @@ public class PaymentService {
 
         jobService.transition(job, JobStatus.paid_out, admin.id());
         notifications.payoutReleased(contractor.getId(), jobId, bid.getNetTotalCents());
+        audit.record(admin.id(), "payout.release", "transfer", transfer.getId(),
+                java.util.Map.of("jobId", jobId.toString(), "contractorId", contractor.getId().toString(),
+                        "amountCents", bid.getNetTotalCents(), "stripeTransferId", transferId));
         return new PaymentDtos.PayoutView(transfer.getId(), bid.getNetTotalCents(), "paid");
     }
 

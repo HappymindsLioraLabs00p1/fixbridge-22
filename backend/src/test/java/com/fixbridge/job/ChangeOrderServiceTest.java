@@ -3,6 +3,7 @@ package com.fixbridge.job;
 import com.fixbridge.auth.AuthUser;
 import com.fixbridge.common.enums.ProposalStatus;
 import com.fixbridge.common.enums.UserRole;
+import com.fixbridge.audit.AuditService;
 import com.fixbridge.contractor.ContractorRepository;
 import com.fixbridge.job.dto.ChangeOrderDtos;
 import com.fixbridge.notification.NotificationService;
@@ -29,10 +30,11 @@ class ChangeOrderServiceTest {
         when(rules.findFirstByScopeAndActiveTrue("global")).thenReturn(Optional.of(new PricingRule()));
         JobService jobService = mock(JobService.class);
         Job job = new Job();
+        job.setId(UUID.randomUUID());
         job.setCustomerId(UUID.randomUUID());
         when(jobService.requireJob(any())).thenReturn(job);
         return new ChangeOrderService(repo, jobService, mock(ContractorRepository.class),
-                new PricingEngine(rules), mock(NotificationService.class));
+                new PricingEngine(rules), mock(NotificationService.class), mock(AuditService.class));
     }
 
     @Test
