@@ -26,13 +26,16 @@ public class ChangeOrderService {
     private final JobService jobService;
     private final ContractorRepository contractors;
     private final PricingEngine pricingEngine;
+    private final com.fixbridge.notification.NotificationService notifications;
 
     public ChangeOrderService(ChangeOrderRepository changeOrders, JobService jobService,
-                              ContractorRepository contractors, PricingEngine pricingEngine) {
+                              ContractorRepository contractors, PricingEngine pricingEngine,
+                              com.fixbridge.notification.NotificationService notifications) {
         this.changeOrders = changeOrders;
         this.jobService = jobService;
         this.contractors = contractors;
         this.pricingEngine = pricingEngine;
+        this.notifications = notifications;
     }
 
     /** Contractor submits newly discovered work + confidential net cost; the job pauses for approval. */
@@ -65,6 +68,8 @@ public class ChangeOrderService {
         co.setAddedRetailCents(retail);
         co.setStatus(ProposalStatus.sent);
         changeOrders.save(co);
+        Job job = jobService.requireJob(co.getJobId());
+        notifications.changeOrderSent(job.getCustomerId(), job.getId(), retail);
         return adminView(co);
     }
 

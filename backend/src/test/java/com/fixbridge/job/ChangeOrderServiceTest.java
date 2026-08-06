@@ -5,6 +5,7 @@ import com.fixbridge.common.enums.ProposalStatus;
 import com.fixbridge.common.enums.UserRole;
 import com.fixbridge.contractor.ContractorRepository;
 import com.fixbridge.job.dto.ChangeOrderDtos;
+import com.fixbridge.notification.NotificationService;
 import com.fixbridge.pricing.PricingEngine;
 import com.fixbridge.pricing.PricingRule;
 import com.fixbridge.pricing.PricingRuleRepository;
@@ -26,8 +27,12 @@ class ChangeOrderServiceTest {
     private ChangeOrderService service(ChangeOrderRepository repo) {
         PricingRuleRepository rules = mock(PricingRuleRepository.class);
         when(rules.findFirstByScopeAndActiveTrue("global")).thenReturn(Optional.of(new PricingRule()));
-        return new ChangeOrderService(repo, mock(JobService.class), mock(ContractorRepository.class),
-                new PricingEngine(rules));
+        JobService jobService = mock(JobService.class);
+        Job job = new Job();
+        job.setCustomerId(UUID.randomUUID());
+        when(jobService.requireJob(any())).thenReturn(job);
+        return new ChangeOrderService(repo, jobService, mock(ContractorRepository.class),
+                new PricingEngine(rules), mock(NotificationService.class));
     }
 
     @Test

@@ -34,12 +34,14 @@ public class ContractorService {
     private final PropertyRepository properties;
     private final AiAssessmentRepository assessments;
     private final StripeClient stripe;
+    private final com.fixbridge.notification.NotificationService notifications;
     private final FixBridgeProperties props;
 
     public ContractorService(ContractorRepository contractors, JobService jobService,
                              JobInvitationRepository invitations, BidRepository bids,
                              PropertyRepository properties, AiAssessmentRepository assessments,
-                             StripeClient stripe, FixBridgeProperties props) {
+                             StripeClient stripe, com.fixbridge.notification.NotificationService notifications,
+                             FixBridgeProperties props) {
         this.contractors = contractors;
         this.jobService = jobService;
         this.invitations = invitations;
@@ -47,6 +49,7 @@ public class ContractorService {
         this.properties = properties;
         this.assessments = assessments;
         this.stripe = stripe;
+        this.notifications = notifications;
         this.props = props;
     }
 
@@ -131,6 +134,7 @@ public class ContractorService {
             throw ApiException.forbidden();
         }
         jobService.transition(job, JobStatus.work_completed, user.id());
+        notifications.workCompleted(job.getCustomerId(), jobId);
     }
 
     private Contractor requireContractor(AuthUser user) {

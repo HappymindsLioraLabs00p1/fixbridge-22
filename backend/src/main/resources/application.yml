@@ -77,3 +77,10 @@ fixbridge:
   storage:
     bucket: ${GCS_BUCKET:fixbridge-dev}
     signed-url-ttl-minutes: ${SIGNED_URL_TTL:15}
+  twilio:
+    account-sid: ${TWILIO_ACCOUNT_SID:}
+    auth-token: ${TWILIO_AUTH_TOKEN:}
+    from-number: ${TWILIO_FROM_NUMBER:}
+  resend:
+    api-key: ${RESEND_API_KEY:}
+    from-email: ${RESEND_FROM_EMAIL:notifications@example.com}

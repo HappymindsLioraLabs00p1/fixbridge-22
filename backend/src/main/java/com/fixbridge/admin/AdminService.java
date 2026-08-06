@@ -40,11 +40,13 @@ public class AdminService {
     private final ProposalRepository proposals;
     private final PricingEngine pricingEngine;
     private final PaymentService paymentService;
+    private final com.fixbridge.notification.NotificationService notifications;
 
     public AdminService(JobRepository jobs, JobService jobService, JobPricingRepository jobPricing,
                         ContractorRepository contractors, JobInvitationRepository invitations,
                         BidRepository bids, ProposalRepository proposals, PricingEngine pricingEngine,
-                        PaymentService paymentService) {
+                        PaymentService paymentService,
+                        com.fixbridge.notification.NotificationService notifications) {
         this.jobs = jobs;
         this.jobService = jobService;
         this.jobPricing = jobPricing;
@@ -54,6 +56,7 @@ public class AdminService {
         this.proposals = proposals;
         this.pricingEngine = pricingEngine;
         this.paymentService = paymentService;
+        this.notifications = notifications;
     }
 
     /** Jobs that have paid for dispatch and are awaiting contractor assignment. */
@@ -83,6 +86,7 @@ public class AdminService {
         if (job.getStatus() == JobStatus.awaiting_contractor) {
             jobService.transition(job, JobStatus.contractor_invited, admin.id());
         }
+        notifications.contractorInvited(contractorId, jobId);
     }
 
     /** Turn a confidential contractor bid into a customer retail proposal (retail from pricing rules). */
@@ -116,6 +120,7 @@ public class AdminService {
             jobPricing.save(p);
         });
         jobService.transition(job, JobStatus.proposal_sent, admin.id());
+        notifications.proposalSent(job.getCustomerId(), jobId, retail);
 
         long margin = retail - bid.getNetTotalCents();
         return new AdminDtos.AdminProposalView(proposal.getId(), jobId, bid.getNetTotalCents(),

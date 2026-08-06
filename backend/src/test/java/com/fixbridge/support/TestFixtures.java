@@ -23,7 +23,9 @@ public final class TestFixtures {
         var stripe = new FixBridgeProperties.Stripe("", "", "http://localhost:3000/ok",
                 "http://localhost:3000/cancel", "http://localhost:3000/return", "http://localhost:3000/refresh");
         var storage = new FixBridgeProperties.Storage("bucket", 15);
-        return new FixBridgeProperties(brand, security, ai, stripe, storage);
+        var twilio = new FixBridgeProperties.Twilio("", "", "");
+        var resend = new FixBridgeProperties.Resend("", "notifications@example.com");
+        return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend);
     }
 
     public static AssessmentResult assessment(String category, AiUrgency urgency, double confidence,

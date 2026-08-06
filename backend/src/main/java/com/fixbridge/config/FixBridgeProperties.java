@@ -14,7 +14,9 @@ public record FixBridgeProperties(
         Security security,
         Ai ai,
         Stripe stripe,
-        Storage storage
+        Storage storage,
+        Twilio twilio,
+        Resend resend
 ) {
     public record Brand(String name, String supportEmail, String domain, String primaryColor) {}
 
@@ -39,4 +41,8 @@ public record FixBridgeProperties(
     ) {}
 
     public record Storage(String bucket, long signedUrlTtlMinutes) {}
+
+    public record Twilio(String accountSid, String authToken, String fromNumber) {}
+
+    public record Resend(String apiKey, String fromEmail) {}
 }
