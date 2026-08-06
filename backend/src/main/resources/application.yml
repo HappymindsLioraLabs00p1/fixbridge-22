@@ -86,3 +86,10 @@ fixbridge:
   resend:
     api-key: ${RESEND_API_KEY:}
     from-email: ${RESEND_FROM_EMAIL:notifications@example.com}
+  billing:
+    # Plan code → Stripe recurring Price ID. Amounts live in Stripe (admin-editable), never here.
+    plans:
+      diy_plus: ${PRICE_DIY_PLUS:}
+      homecare_plus: ${PRICE_HOMECARE_PLUS:}
+      property_pro: ${PRICE_PROPERTY_PRO:}
+      contractor_pro: ${PRICE_CONTRACTOR_PRO:}

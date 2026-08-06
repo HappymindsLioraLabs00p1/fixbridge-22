@@ -79,6 +79,27 @@ public class LiveStripeClient implements StripeClient {
     }
 
     @Override
+    public CheckoutSession createSubscriptionCheckout(String customerEmail, String priceId, String referenceId) {
+        try {
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setSuccessUrl(cfg.successUrl())
+                    .setCancelUrl(cfg.cancelUrl())
+                    .setClientReferenceId(referenceId)
+                    .setCustomerEmail(customerEmail)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPrice(priceId)
+                            .build())
+                    .build();
+            Session session = Session.create(params);
+            return new CheckoutSession(session.getId(), session.getUrl());
+        } catch (StripeException e) {
+            throw paymentError("create subscription checkout", e);
+        }
+    }
+
+    @Override
     public ConnectAccount createConnectAccount(String email) {
         try {
             Account account = Account.create(AccountCreateParams.builder()

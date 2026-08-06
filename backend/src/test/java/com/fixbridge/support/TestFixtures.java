@@ -25,7 +25,8 @@ public final class TestFixtures {
         var storage = new FixBridgeProperties.Storage("bucket", 15, "http://localhost:8080");
         var twilio = new FixBridgeProperties.Twilio("", "", "");
         var resend = new FixBridgeProperties.Resend("", "notifications@example.com");
-        return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend);
+        var billing = new FixBridgeProperties.Billing(java.util.Map.of("diy_plus", "price_test"));
+        return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend, billing);
     }
 
     public static AssessmentResult assessment(String category, AiUrgency urgency, double confidence,

@@ -50,6 +50,11 @@ export function SiteHeader() {
                   Dashboard
                 </Button>
               </Link>
+              <Link href="/plans">
+                <Button variant="ghost" size="sm">
+                  Plans
+                </Button>
+              </Link>
               <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
               <Button
                 variant="outline"

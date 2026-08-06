@@ -33,4 +33,10 @@ public class StubStripeClient implements StripeClient {
         String acct = "acct_stub_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         return new ConnectAccount(acct, "https://stub.connect.local/onboard/" + acct);
     }
+
+    @Override
+    public CheckoutSession createSubscriptionCheckout(String customerEmail, String priceId, String referenceId) {
+        String session = "cs_sub_stub_" + UUID.randomUUID().toString().replace("-", "");
+        return new CheckoutSession(session, "https://stub.checkout.local/subscribe/" + session);
+    }
 }

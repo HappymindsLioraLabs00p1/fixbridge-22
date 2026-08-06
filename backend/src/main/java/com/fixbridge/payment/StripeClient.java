@@ -22,4 +22,7 @@ public interface StripeClient {
 
     /** Create a Stripe-hosted Connect onboarding flow (no custom bank/identity form of our own). */
     ConnectAccount createConnectAccount(String email);
+
+    /** Create a Checkout session in subscription mode for a recurring Price. */
+    CheckoutSession createSubscriptionCheckout(String customerEmail, String priceId, String referenceId);
 }

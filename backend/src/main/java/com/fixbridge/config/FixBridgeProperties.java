@@ -2,6 +2,8 @@ package com.fixbridge.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.Map;
+
 /**
  * All FixBridge application configuration, bound from {@code fixbridge.*} in application.yml
  * (which in turn reads environment variables). Brand identity, AI model names, pricing and provider
@@ -16,7 +18,8 @@ public record FixBridgeProperties(
         Stripe stripe,
         Storage storage,
         Twilio twilio,
-        Resend resend
+        Resend resend,
+        Billing billing
 ) {
     public record Brand(String name, String supportEmail, String domain, String primaryColor) {}
 
@@ -45,4 +48,11 @@ public record FixBridgeProperties(
     public record Twilio(String accountSid, String authToken, String fromNumber) {}
 
     public record Resend(String apiKey, String fromEmail) {}
+
+    /** Maps a plan code → its Stripe recurring Price ID. Amounts live in Stripe, never hard-coded here. */
+    public record Billing(Map<String, String> plans) {
+        public Billing {
+            plans = plans == null ? Map.of() : plans;
+        }
+    }
 }

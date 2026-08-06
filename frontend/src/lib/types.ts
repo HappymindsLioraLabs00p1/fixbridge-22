@@ -99,6 +99,26 @@ export interface UploadTarget {
   contentType: string;
 }
 
+export interface PlanView {
+  code: string;
+  name: string;
+  blurb: string;
+  audience: string;
+  interval: string;
+  available: boolean;
+}
+
+export interface SubscriptionView {
+  planCode: string;
+  status: string;
+  currentPeriodEnd: string | null;
+}
+
+export interface BillingCheckout {
+  sessionId: string;
+  url: string;
+}
+
 export interface JobSummary {
   id: string;
   status: JobStatus;

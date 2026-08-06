@@ -7,13 +7,16 @@ import type {
   AdminChangeOrder,
   AdminJob,
   AdminProposal,
+  BillingCheckout,
   CheckoutView,
   ContractorInvitation,
   CustomerChangeOrder,
   CustomerProposal,
   JobDetail,
   JobSummary,
+  PlanView,
   Property,
+  SubscriptionView,
   TokenResponse,
   UserRole,
 } from "@/lib/types";
@@ -213,5 +216,23 @@ export function usePublishChangeOrder(jobId: string) {
     mutationFn: (changeOrderId: string) =>
       api.post<AdminChangeOrder>(`/api/admin/change-orders/${changeOrderId}/publish`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-change-orders", jobId] }),
+  });
+}
+
+// ---- Billing / subscriptions ----
+export function usePlans() {
+  return useQuery({ queryKey: ["plans"], queryFn: () => api.get<PlanView[]>("/api/billing/plans") });
+}
+
+export function useCurrentSubscription() {
+  return useQuery({
+    queryKey: ["subscription"],
+    queryFn: () => api.get<SubscriptionView | null>("/api/billing/subscription"),
+  });
+}
+
+export function useSubscribe() {
+  return useMutation({
+    mutationFn: (planCode: string) => api.post<BillingCheckout>("/api/billing/checkout", { planCode }),
   });
 }
