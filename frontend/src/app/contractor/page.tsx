@@ -6,6 +6,7 @@ import {
   useInvitations,
   useOnboardContractor,
   useSubmitBid,
+  useSubmitChangeOrder,
   useSubmitCompletion,
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
@@ -108,10 +109,15 @@ function InvitationsList() {
 function InvitationRow({ inv }: { inv: ContractorInvitation }) {
   const bid = useSubmitBid(inv.jobId);
   const completion = useSubmitCompletion(inv.jobId);
+  const changeOrder = useSubmitChangeOrder(inv.jobId);
   const [open, setOpen] = useState(false);
   const [labor, setLabor] = useState(0);
   const [materials, setMaterials] = useState(0);
   const [travel, setTravel] = useState(0);
+  const [coOpen, setCoOpen] = useState(false);
+  const [coDesc, setCoDesc] = useState("");
+  const [coNet, setCoNet] = useState(0);
+  const [coDays, setCoDays] = useState(0);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -145,6 +151,9 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
         <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>
           {open ? "Cancel" : "Submit net bid"}
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setCoOpen((o) => !o)}>
+          {coOpen ? "Cancel" : "Report extra work"}
+        </Button>
         <Button
           size="sm"
           variant="ghost"
@@ -154,10 +163,42 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
           Mark work complete
         </Button>
         {bid.isSuccess && <span className="self-center text-sm text-[var(--success)]">Bid submitted ✓</span>}
+        {changeOrder.isSuccess && (
+          <span className="self-center text-sm text-[var(--success)]">Change order submitted ✓</span>
+        )}
         {completion.isSuccess && (
           <span className="self-center text-sm text-[var(--success)]">Completion submitted ✓</span>
         )}
       </div>
+
+      {coOpen && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            changeOrder.mutate(
+              { description: coDesc, addedNetCents: coNet * 100, addedDays: coDays || undefined },
+              { onSuccess: () => setCoOpen(false) },
+            );
+          }}
+          className="mt-3 space-y-2 border-t pt-3"
+        >
+          <Label className="text-xs">Describe the newly discovered work (confidential net)</Label>
+          <Input value={coDesc} onChange={(e) => setCoDesc(e.target.value)} placeholder="e.g. Corroded shutoff valve behind wall" required />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Added net ($)</Label>
+              <Input type="number" min={1} value={coNet} onChange={(e) => setCoNet(+e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Added days</Label>
+              <Input type="number" min={0} value={coDays} onChange={(e) => setCoDays(+e.target.value)} />
+            </div>
+          </div>
+          <Button type="submit" size="sm" disabled={changeOrder.isPending || !coDesc || coNet < 1}>
+            {changeOrder.isPending ? "Submitting…" : "Submit change order"}
+          </Button>
+        </form>
+      )}
 
       {open && (
         <form onSubmit={submit} className="mt-3 grid grid-cols-3 gap-2 border-t pt-3">

@@ -142,3 +142,23 @@ export interface AdminProposal {
   marginCents: number;
   status: string;
 }
+
+export interface CustomerChangeOrder {
+  id: string;
+  jobId: string;
+  description: string;
+  addedRetailCents: number;
+  addedDays: number | null;
+  status: string;
+}
+
+export interface AdminChangeOrder {
+  id: string;
+  jobId: string;
+  description: string;
+  addedNetCents: number;
+  addedRetailCents: number;
+  marginCents: number;
+  addedDays: number | null;
+  status: string;
+}

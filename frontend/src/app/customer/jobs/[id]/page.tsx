@@ -3,7 +3,14 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
-import { useApproveProposal, useDispatchCheckout, useJob, useProposals } from "@/lib/hooks";
+import {
+  useApproveChangeOrder,
+  useApproveProposal,
+  useChangeOrders,
+  useDispatchCheckout,
+  useJob,
+  useProposals,
+} from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobStatusBadge, UrgencyBadge } from "@/components/status-badge";
@@ -127,10 +134,46 @@ export default function JobDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            <ChangeOrdersCard jobId={jobId} />
           </>
         )}
       </div>
     </RequireRole>
+  );
+}
+
+function ChangeOrdersCard({ jobId }: { jobId: string }) {
+  const { data: changeOrders } = useChangeOrders(jobId);
+  const approve = useApproveChangeOrder(jobId);
+  if (!changeOrders || changeOrders.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Additional work</CardTitle>
+        <CardDescription>
+          Extra work discovered on site. Work pauses until you approve the added price.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {changeOrders.map((co) => (
+          <div key={co.id} className="space-y-2 rounded-md border p-4">
+            <p className="text-sm">{co.description}</p>
+            <p className="text-xl font-bold">+{formatCents(co.addedRetailCents)}</p>
+            {co.addedDays != null && (
+              <p className="text-sm text-muted-foreground">Adds ~{co.addedDays} day(s)</p>
+            )}
+            {co.status === "sent" ? (
+              <Button size="sm" disabled={approve.isPending} onClick={() => approve.mutate(co.id)}>
+                {approve.isPending ? "Approving…" : "Approve added work"}
+              </Button>
+            ) : (
+              <p className="text-sm font-medium capitalize text-muted-foreground">{co.status}</p>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -2,6 +2,8 @@ package com.fixbridge.contractor;
 
 import com.fixbridge.auth.SecurityUtil;
 import com.fixbridge.contractor.dto.ContractorDtos;
+import com.fixbridge.job.ChangeOrderService;
+import com.fixbridge.job.dto.ChangeOrderDtos;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,9 +24,11 @@ import java.util.UUID;
 public class ContractorController {
 
     private final ContractorService contractorService;
+    private final ChangeOrderService changeOrderService;
 
-    public ContractorController(ContractorService contractorService) {
+    public ContractorController(ContractorService contractorService, ChangeOrderService changeOrderService) {
         this.contractorService = contractorService;
+        this.changeOrderService = changeOrderService;
     }
 
     @PostMapping("/onboard")
@@ -46,5 +50,12 @@ public class ContractorController {
     @PostMapping("/jobs/{jobId}/completion")
     public void submitCompletion(@PathVariable UUID jobId, @Valid @RequestBody ContractorDtos.CompletionRequest req) {
         contractorService.submitCompletion(SecurityUtil.currentUser(), jobId, req);
+    }
+
+    /** Document newly discovered work with its confidential net cost (pauses the job for approval). */
+    @PostMapping("/jobs/{jobId}/change-orders")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void submitChangeOrder(@PathVariable UUID jobId, @Valid @RequestBody ChangeOrderDtos.SubmitRequest req) {
+        changeOrderService.submit(SecurityUtil.currentUser(), jobId, req);
     }
 }

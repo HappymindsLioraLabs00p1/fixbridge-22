@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
 import {
+  useAdminChangeOrders,
   useCreateProposal,
   useDispatchQueue,
   useInviteContractor,
+  usePublishChangeOrder,
   useReleasePayout,
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
@@ -117,7 +119,36 @@ function AdminJobCard({ job }: { job: AdminJob }) {
             {payout.isSuccess && <p className="text-xs text-[var(--success)]">Payout released ✓</p>}
           </div>
         </div>
+
+        <AdminChangeOrders jobId={job.jobId} />
       </CardContent>
     </Card>
+  );
+}
+
+function AdminChangeOrders({ jobId }: { jobId: string }) {
+  const { data: orders } = useAdminChangeOrders(jobId);
+  const publish = usePublishChangeOrder(jobId);
+  if (!orders || orders.length === 0) return null;
+  return (
+    <div className="space-y-2 border-t pt-4">
+      <p className="text-sm font-medium">Change orders</p>
+      {orders.map((co) => (
+        <div key={co.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+          <span className="max-w-sm">{co.description}</span>
+          <span className="text-muted-foreground">
+            net {formatCents(co.addedNetCents)} → retail {formatCents(co.addedRetailCents)} · margin{" "}
+            <span className="font-medium">{formatCents(co.marginCents)}</span>
+          </span>
+          {co.status === "draft" ? (
+            <Button size="sm" variant="outline" disabled={publish.isPending} onClick={() => publish.mutate(co.id)}>
+              Price &amp; send
+            </Button>
+          ) : (
+            <span className="capitalize text-muted-foreground">{co.status}</span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

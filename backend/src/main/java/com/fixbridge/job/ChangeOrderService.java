@@ -1,0 +1,116 @@
+package com.fixbridge.job;
+
+import com.fixbridge.auth.AuthUser;
+import com.fixbridge.common.enums.JobStatus;
+import com.fixbridge.common.enums.ProposalStatus;
+import com.fixbridge.common.error.ApiException;
+import com.fixbridge.contractor.Contractor;
+import com.fixbridge.contractor.ContractorRepository;
+import com.fixbridge.job.dto.ChangeOrderDtos;
+import com.fixbridge.pricing.PricingEngine;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Change-order workflow (spec §12.3): contractor documents newly discovered work → admin applies retail
+ * pricing rules → customer approves the retail change order → work resumes. The added net is confidential
+ * to contractor + admin; the customer only ever sees the added retail.
+ */
+@Service
+public class ChangeOrderService {
+
+    private final ChangeOrderRepository changeOrders;
+    private final JobService jobService;
+    private final ContractorRepository contractors;
+    private final PricingEngine pricingEngine;
+
+    public ChangeOrderService(ChangeOrderRepository changeOrders, JobService jobService,
+                              ContractorRepository contractors, PricingEngine pricingEngine) {
+        this.changeOrders = changeOrders;
+        this.jobService = jobService;
+        this.contractors = contractors;
+        this.pricingEngine = pricingEngine;
+    }
+
+    /** Contractor submits newly discovered work + confidential net cost; the job pauses for approval. */
+    @Transactional
+    public void submit(AuthUser user, UUID jobId, ChangeOrderDtos.SubmitRequest req) {
+        Contractor contractor = contractors.findByOwnerUserId(user.id())
+                .orElseThrow(() -> ApiException.forbidden());
+        Job job = jobService.requireJob(jobId);
+        if (!contractor.getId().equals(job.getAssignedContractorId())) {
+            throw ApiException.forbidden();
+        }
+        ChangeOrder co = new ChangeOrder();
+        co.setJobId(jobId);
+        co.setDescription(req.description());
+        co.setAddedNetCents(req.addedNetCents());
+        co.setAddedRetailCents(0); // set by admin at publish time
+        co.setAddedDays(req.addedDays());
+        co.setStatus(ProposalStatus.draft);
+        changeOrders.save(co);
+
+        // Additional work must not continue before approval.
+        jobService.transition(job, JobStatus.change_order_pending, user.id());
+    }
+
+    /** Admin applies retail pricing rules to the added net and sends the change order to the customer. */
+    @Transactional
+    public ChangeOrderDtos.AdminView publish(AuthUser admin, UUID changeOrderId) {
+        ChangeOrder co = require(changeOrderId);
+        long retail = pricingEngine.retailForNet(co.getAddedNetCents());
+        co.setAddedRetailCents(retail);
+        co.setStatus(ProposalStatus.sent);
+        changeOrders.save(co);
+        return adminView(co);
+    }
+
+    @Transactional
+    public ChangeOrderDtos.CustomerView approve(AuthUser user, UUID changeOrderId) {
+        ChangeOrder co = require(changeOrderId);
+        Job job = jobService.requireJob(co.getJobId());
+        if (!job.getCustomerId().equals(user.id())) {
+            throw ApiException.forbidden();
+        }
+        if (co.getStatus() != ProposalStatus.sent) {
+            throw ApiException.conflict("Change order is not open for approval");
+        }
+        co.setStatus(ProposalStatus.approved);
+        changeOrders.save(co);
+        // Work resumes once the customer approves. (The added retail is billed at final invoice.)
+        jobService.transition(job, JobStatus.work_started, user.id());
+        return customerView(co);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChangeOrderDtos.CustomerView> listForCustomer(AuthUser user, UUID jobId) {
+        Job job = jobService.requireJob(jobId);
+        if (!job.getCustomerId().equals(user.id())) {
+            throw ApiException.forbidden();
+        }
+        return changeOrders.findByJobIdOrderByCreatedAtAsc(jobId).stream().map(this::customerView).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChangeOrderDtos.AdminView> listForAdmin(UUID jobId) {
+        return changeOrders.findByJobIdOrderByCreatedAtAsc(jobId).stream().map(this::adminView).toList();
+    }
+
+    private ChangeOrder require(UUID id) {
+        return changeOrders.findById(id).orElseThrow(() -> ApiException.notFound("Change order"));
+    }
+
+    private ChangeOrderDtos.CustomerView customerView(ChangeOrder co) {
+        return new ChangeOrderDtos.CustomerView(co.getId(), co.getJobId(), co.getDescription(),
+                co.getAddedRetailCents(), co.getAddedDays(), co.getStatus());
+    }
+
+    private ChangeOrderDtos.AdminView adminView(ChangeOrder co) {
+        return new ChangeOrderDtos.AdminView(co.getId(), co.getJobId(), co.getDescription(),
+                co.getAddedNetCents(), co.getAddedRetailCents(),
+                co.getAddedRetailCents() - co.getAddedNetCents(), co.getAddedDays(), co.getStatus());
+    }
+}

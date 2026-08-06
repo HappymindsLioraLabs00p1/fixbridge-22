@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import type {
+  AdminChangeOrder,
   AdminJob,
   AdminProposal,
   CheckoutView,
   ContractorInvitation,
+  CustomerChangeOrder,
   CustomerProposal,
   JobDetail,
   JobSummary,
@@ -168,5 +170,48 @@ export function useReleasePayout(jobId: string) {
   return useMutation({
     mutationFn: () => api.post(`/api/admin/jobs/${jobId}/payout`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-queue"] }),
+  });
+}
+
+// ---- Change orders ----
+export function useChangeOrders(jobId: string) {
+  return useQuery({
+    queryKey: ["change-orders", jobId],
+    queryFn: () => api.get<CustomerChangeOrder[]>(`/api/change-orders?jobId=${jobId}`),
+  });
+}
+
+export function useApproveChangeOrder(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (changeOrderId: string) =>
+      api.post<CustomerChangeOrder>(`/api/change-orders/${changeOrderId}/approve`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["change-orders", jobId] });
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+    },
+  });
+}
+
+export function useSubmitChangeOrder(jobId: string) {
+  return useMutation({
+    mutationFn: (body: { description: string; addedNetCents: number; addedDays?: number }) =>
+      api.post(`/api/contractor/jobs/${jobId}/change-orders`, body),
+  });
+}
+
+export function useAdminChangeOrders(jobId: string) {
+  return useQuery({
+    queryKey: ["admin-change-orders", jobId],
+    queryFn: () => api.get<AdminChangeOrder[]>(`/api/admin/jobs/${jobId}/change-orders`),
+  });
+}
+
+export function usePublishChangeOrder(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (changeOrderId: string) =>
+      api.post<AdminChangeOrder>(`/api/admin/change-orders/${changeOrderId}/publish`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-change-orders", jobId] }),
   });
 }

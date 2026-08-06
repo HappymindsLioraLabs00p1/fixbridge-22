@@ -3,6 +3,8 @@ package com.fixbridge.integration;
 import com.fixbridge.common.enums.UserRole;
 import com.fixbridge.job.Bid;
 import com.fixbridge.job.BidRepository;
+import com.fixbridge.job.ChangeOrder;
+import com.fixbridge.job.ChangeOrderRepository;
 import com.fixbridge.user.UserRoleEntity;
 import com.fixbridge.user.UserRoleRepository;
 import org.junit.jupiter.api.Test;
@@ -62,6 +64,7 @@ class ManagedJobFlowIT {
     @Autowired TestRestTemplate rest;
     @Autowired UserRoleRepository roles;
     @Autowired BidRepository bids;
+    @Autowired ChangeOrderRepository changeOrders;
 
     @Test
     @SuppressWarnings("unchecked")
@@ -128,6 +131,19 @@ class ManagedJobFlowIT {
         String rSession = (String) post("/api/proposals/" + proposalId + "/approve", null, custToken).get("sessionId");
         postText("/api/webhooks/stripe", stripeEvent("evt_r_" + rnd, "checkout.session.completed", rSession));
         assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("scheduled");
+
+        // Change order mid-job: contractor documents extra work -> job pauses -> admin prices -> customer approves.
+        post("/api/contractor/jobs/" + jobId + "/change-orders",
+                json("description", "Corroded shutoff valve behind wall", "addedNetCents", 20000, "addedDays", 1), conToken);
+        assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("change_order_pending");
+        ChangeOrder co = changeOrders.findByJobIdOrderByCreatedAtAsc(UUID.fromString(jobId)).get(0);
+        Map<String, Object> published = post("/api/admin/change-orders/" + co.getId() + "/publish", null, adminToken);
+        long coNet = ((Number) published.get("addedNetCents")).longValue();
+        long coRetail = ((Number) published.get("addedRetailCents")).longValue();
+        assertThat(coRetail).isGreaterThan(coNet);
+        assertThat(((Number) published.get("marginCents")).longValue()).isEqualTo(coRetail - coNet);
+        post("/api/change-orders/" + co.getId() + "/approve", null, custToken);
+        assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("work_started");
 
         post("/api/contractor/jobs/" + jobId + "/completion", json("summary", "Replaced trap; tested, no leaks."), conToken);
         assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("work_completed");
