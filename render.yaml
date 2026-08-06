@@ -1,0 +1,75 @@
+# Companion host for the parts Netlify cannot run: the Spring Boot API, PostgreSQL and Redis.
+# Netlify serves the Next.js frontend; this Blueprint serves everything behind /api.
+#
+# Deploy: push this repo to GitHub → Render → New → Blueprint → pick the repo.
+# Then set the values marked `sync: false` in the Render dashboard (they are secrets or depend on
+# the final URLs). Any equivalent host works — Railway, Fly.io, Koyeb, or the GCP Terraform in
+# infra/terraform. Nothing here is Render-specific except the file format.
+
+databases:
+  - name: fixbridge-postgres
+    databaseName: fixbridge
+    user: fixbridge
+    plan: free
+
+services:
+  - type: redis
+    name: fixbridge-redis
+    plan: free
+    ipAllowList: []          # internal access only
+
+  - type: web
+    name: fixbridge-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    plan: free
+    envVars:
+      # --- Database -------------------------------------------------------------------------
+      # Spring needs a JDBC URL. Render's connection string is postgres://… so it can't be wired
+      # automatically — copy host/port/db from the dashboard into this form:
+      #   jdbc:postgresql://<internal-host>:5432/fixbridge
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        fromDatabase:
+          name: fixbridge-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: fixbridge-postgres
+          property: password
+
+      # --- Redis ----------------------------------------------------------------------------
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: fixbridge-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: fixbridge-redis
+          property: port
+
+      # --- Security -------------------------------------------------------------------------
+      - key: JWT_SECRET
+        generateValue: true
+      # Comma-separated. MUST include your Netlify site URL, e.g. https://fixbridge.netlify.app
+      - key: CORS_ORIGINS
+        sync: false
+
+      # --- Integrations ---------------------------------------------------------------------
+      # true = deterministic stubs (no external keys needed — good for a client demo).
+      # false = live OpenAI/Claude/Stripe/Twilio/Resend; then fill in the keys below.
+      - key: INTEGRATIONS_STUB_MODE
+        value: "true"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

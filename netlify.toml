@@ -1,0 +1,24 @@
+# Netlify hosts the Next.js frontend. The Java/Spring backend + PostgreSQL + Redis run elsewhere
+# (see docs/04-Deployment.md) — set BACKEND_ORIGIN in the Netlify UI to that backend's HTTPS URL,
+# and next.config.ts proxies /api/* to it so the browser stays same-origin.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Netlify sets NETLIFY=true; DOCKER_BUILD is deliberately unset so Next does NOT use
+  # standalone output here (that mode is for the Docker image only).
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Security headers for the hosted app.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

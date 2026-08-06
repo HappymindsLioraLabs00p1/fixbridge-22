@@ -10,6 +10,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Opt into Next's standalone output for the container image (see next.config.ts).
+ENV DOCKER_BUILD=1
 RUN npm run build
 
 # --- Runtime (Next.js standalone) ---
