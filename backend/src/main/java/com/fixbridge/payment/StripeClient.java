@@ -16,4 +16,10 @@ public interface StripeClient {
 
     /** Create a Connect transfer to a contractor's connected account. Returns the transfer id. */
     String createTransfer(String connectedAccountId, long amountCents, String currency, String referenceId);
+
+    /** A newly created Connect account plus the hosted onboarding link the contractor is sent to. */
+    record ConnectAccount(String accountId, String onboardingUrl) {}
+
+    /** Create a Stripe-hosted Connect onboarding flow (no custom bank/identity form of our own). */
+    ConnectAccount createConnectAccount(String email);
 }

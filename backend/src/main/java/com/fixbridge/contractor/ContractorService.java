@@ -15,6 +15,7 @@ import com.fixbridge.job.Job;
 import com.fixbridge.job.JobInvitation;
 import com.fixbridge.job.JobInvitationRepository;
 import com.fixbridge.job.JobService;
+import com.fixbridge.payment.StripeClient;
 import com.fixbridge.property.Property;
 import com.fixbridge.property.PropertyRepository;
 import org.springframework.stereotype.Service;
@@ -32,18 +33,20 @@ public class ContractorService {
     private final BidRepository bids;
     private final PropertyRepository properties;
     private final AiAssessmentRepository assessments;
+    private final StripeClient stripe;
     private final FixBridgeProperties props;
 
     public ContractorService(ContractorRepository contractors, JobService jobService,
                              JobInvitationRepository invitations, BidRepository bids,
                              PropertyRepository properties, AiAssessmentRepository assessments,
-                             FixBridgeProperties props) {
+                             StripeClient stripe, FixBridgeProperties props) {
         this.contractors = contractors;
         this.jobService = jobService;
         this.invitations = invitations;
         this.bids = bids;
         this.properties = properties;
         this.assessments = assessments;
+        this.stripe = stripe;
         this.props = props;
     }
 
@@ -58,16 +61,28 @@ public class ContractorService {
         contractor.setOwnerUserId(user.id());
         contractor.setBusinessName(req.businessName());
         contractor.setContactPhone(req.contactPhone());
+
+        String onboardingUrl = null;
         if (props.ai().stubMode()) {
+            // Frontend-first: complete onboarding immediately so the payout leg can be exercised.
             contractor.setStatus(ContractorStatus.approved);
             contractor.setStripeAccountId("acct_stub_" + user.id().toString().replace("-", "").substring(0, 12));
             contractor.setConnectOnboarded(true);
             contractor.setPayoutsEnabled(true);
-        } else if (contractor.getStatus() == null) {
-            contractor.setStatus(ContractorStatus.documents_pending);
+        } else {
+            // Live: create a Stripe-hosted Connect (Express) account and return its onboarding link.
+            if (contractor.getStripeAccountId() == null) {
+                StripeClient.ConnectAccount acct = stripe.createConnectAccount(user.email());
+                contractor.setStripeAccountId(acct.accountId());
+                onboardingUrl = acct.onboardingUrl();
+            }
+            if (contractor.getStatus() == null || contractor.getStatus() == ContractorStatus.draft) {
+                contractor.setStatus(ContractorStatus.documents_pending);
+            }
         }
         contractor = contractors.save(contractor);
-        return toView(contractor);
+        return new ContractorDtos.ContractorView(contractor.getId(), contractor.getBusinessName(),
+                contractor.getStatus(), contractor.isPayoutsEnabled(), onboardingUrl);
     }
 
     @Transactional(readOnly = true)
@@ -140,9 +155,5 @@ public class ContractorService {
 
     private static String nullSafe(String s) {
         return s == null ? "" : s;
-    }
-
-    private ContractorDtos.ContractorView toView(Contractor c) {
-        return new ContractorDtos.ContractorView(c.getId(), c.getBusinessName(), c.getStatus(), c.isPayoutsEnabled());
     }
 }

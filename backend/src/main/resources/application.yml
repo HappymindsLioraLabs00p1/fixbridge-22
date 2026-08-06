@@ -70,6 +70,10 @@ fixbridge:
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    success-url: ${STRIPE_SUCCESS_URL:http://localhost:3000/customer?paid=1}
+    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:3000/customer?canceled=1}
+    connect-return-url: ${STRIPE_CONNECT_RETURN_URL:http://localhost:3000/contractor?onboarded=1}
+    connect-refresh-url: ${STRIPE_CONNECT_REFRESH_URL:http://localhost:3000/contractor?refresh=1}
   storage:
     bucket: ${GCS_BUCKET:fixbridge-dev}
     signed-url-ttl-minutes: ${SIGNED_URL_TTL:15}

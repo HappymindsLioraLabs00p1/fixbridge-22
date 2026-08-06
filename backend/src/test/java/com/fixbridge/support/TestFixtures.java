@@ -20,7 +20,8 @@ public final class TestFixtures {
         var security = new FixBridgeProperties.Security(
                 "test-secret-test-secret-test-secret-1234", 15, 14, "http://localhost:3000");
         var brand = new FixBridgeProperties.Brand("FixBridge", "support@example.com", "example.com", "#1f6feb");
-        var stripe = new FixBridgeProperties.Stripe("", "");
+        var stripe = new FixBridgeProperties.Stripe("", "", "http://localhost:3000/ok",
+                "http://localhost:3000/cancel", "http://localhost:3000/return", "http://localhost:3000/refresh");
         var storage = new FixBridgeProperties.Storage("bucket", 15);
         return new FixBridgeProperties(brand, security, ai, stripe, storage);
     }

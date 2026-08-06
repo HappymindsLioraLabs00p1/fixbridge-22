@@ -27,4 +27,10 @@ public class StubStripeClient implements StripeClient {
     public String createTransfer(String connectedAccountId, long amountCents, String currency, String referenceId) {
         return "tr_stub_" + UUID.randomUUID().toString().replace("-", "");
     }
+
+    @Override
+    public ConnectAccount createConnectAccount(String email) {
+        String acct = "acct_stub_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        return new ConnectAccount(acct, "https://stub.connect.local/onboard/" + acct);
+    }
 }

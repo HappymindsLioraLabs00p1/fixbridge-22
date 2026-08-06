@@ -29,7 +29,14 @@ public record FixBridgeProperties(
         public record Provider(String baseUrl, String apiKey, String model) {}
     }
 
-    public record Stripe(String secretKey, String webhookSecret) {}
+    public record Stripe(
+            String secretKey,
+            String webhookSecret,
+            String successUrl,
+            String cancelUrl,
+            String connectReturnUrl,
+            String connectRefreshUrl
+    ) {}
 
     public record Storage(String bucket, long signedUrlTtlMinutes) {}
 }

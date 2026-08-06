@@ -51,7 +51,16 @@ function OnboardCard() {
           className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            onboard.mutate({ businessName, contactPhone });
+            onboard.mutate(
+              { businessName, contactPhone },
+              {
+                onSuccess: (data) => {
+                  // Live mode returns a Stripe-hosted onboarding link; stub mode returns none.
+                  const url = (data as { onboardingUrl?: string })?.onboardingUrl;
+                  if (url) window.location.href = url;
+                },
+              },
+            );
           }}
         >
           <div className="space-y-1.5">

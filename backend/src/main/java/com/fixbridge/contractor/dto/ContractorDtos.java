@@ -15,7 +15,7 @@ public final class ContractorDtos {
     public record OnboardRequest(@NotBlank String businessName, String contactPhone) {}
 
     public record ContractorView(UUID id, String businessName, ContractorStatus status,
-                                 boolean payoutsEnabled) {}
+                                 boolean payoutsEnabled, String onboardingUrl) {}
 
     /**
      * Pre-authorization invitation view: general area, trade, urgency and expected NET payout only —
