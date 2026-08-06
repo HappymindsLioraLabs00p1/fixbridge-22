@@ -83,6 +83,15 @@ estimate → dispatch fee → idempotent webhook → admin invite → confidenti
 with hidden margin → customer approve & pay → completion → Connect payout), confirming role-based
 confidentiality at every step.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push/PR:
+
+- **Backend** — `mvn verify` (unit tests + the Testcontainers end-to-end managed-job test; the latter
+  runs on CI because GitHub runners have Docker, and self-skips locally without it).
+- **Frontend** — `npm ci` + `npm run build` (lint + type-check + build).
+- **Infra** — `terraform fmt -check` + `terraform validate`.
+
 ## Non-negotiable rules (from the product spec)
 
 - **The AI never invents the price.** A separate **server-side pricing engine** computes the retail
