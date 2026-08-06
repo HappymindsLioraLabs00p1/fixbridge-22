@@ -7,7 +7,9 @@ import type {
   AdminChangeOrder,
   AdminJob,
   AdminProposal,
+  BidOption,
   BillingCheckout,
+  ContractorOption,
   CheckoutView,
   ContractorInvitation,
   CustomerChangeOrder,
@@ -141,6 +143,22 @@ export function useDispatchQueue() {
   return useQuery({
     queryKey: ["dispatch-queue"],
     queryFn: () => api.get<AdminJob[]>("/api/admin/dispatch-queue"),
+  });
+}
+
+/** Contractors the admin can invite (with eligibility). */
+export function useContractorOptions() {
+  return useQuery({
+    queryKey: ["admin-contractors"],
+    queryFn: () => api.get<ContractorOption[]>("/api/admin/contractors"),
+  });
+}
+
+/** Bids submitted for a job, each previewing the retail price and margin. */
+export function useBidOptions(jobId: string) {
+  return useQuery({
+    queryKey: ["admin-bids", jobId],
+    queryFn: () => api.get<BidOption[]>(`/api/admin/jobs/${jobId}/bids`),
   });
 }
 

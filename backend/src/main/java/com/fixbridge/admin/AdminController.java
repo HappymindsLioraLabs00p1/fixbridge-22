@@ -35,6 +35,18 @@ public class AdminController {
         return adminService.dispatchQueue();
     }
 
+    /** Pick-list of contractors to invite, with eligibility. */
+    @GetMapping("/contractors")
+    public List<AdminDtos.ContractorOption> contractors() {
+        return adminService.contractorOptions();
+    }
+
+    /** Pick-list of bids submitted for a job, each previewing retail + margin. */
+    @GetMapping("/jobs/{jobId}/bids")
+    public List<AdminDtos.BidOption> bids(@PathVariable UUID jobId) {
+        return adminService.bidOptions(jobId);
+    }
+
     @PostMapping("/jobs/{jobId}/invite")
     public void invite(@PathVariable UUID jobId, @Valid @RequestBody AdminDtos.InviteRequest req) {
         adminService.inviteContractor(SecurityUtil.currentUser(), jobId, req.contractorId());

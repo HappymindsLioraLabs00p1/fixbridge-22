@@ -4,6 +4,8 @@ import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
 import {
   useAdminChangeOrders,
+  useBidOptions,
+  useContractorOptions,
   useCreateProposal,
   useDispatchQueue,
   useInviteContractor,
@@ -12,6 +14,7 @@ import {
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobStatusBadge, UrgencyBadge } from "@/components/status-badge";
@@ -50,9 +53,12 @@ function AdminJobCard({ job }: { job: AdminJob }) {
   const invite = useInviteContractor(job.jobId);
   const proposal = useCreateProposal(job.jobId);
   const payout = useReleasePayout(job.jobId);
+  const { data: contractorOptions } = useContractorOptions();
+  const { data: bidOptions } = useBidOptions(job.jobId);
   const [contractorId, setContractorId] = useState("");
   const [bidId, setBidId] = useState("");
   const [scope, setScope] = useState("");
+  const selectedBid = (bidOptions ?? []).find((b) => b.bidId === bidId);
 
   return (
     <Card>
@@ -81,17 +87,45 @@ function AdminJobCard({ job }: { job: AdminJob }) {
         <div className="grid gap-3 border-t pt-4 sm:grid-cols-3">
           {/* Invite */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Invite contractor (id)</Label>
-            <Input value={contractorId} onChange={(e) => setContractorId(e.target.value)} placeholder="contractor uuid" />
+            <Label className="text-xs">Invite contractor</Label>
+            <Select value={contractorId} onChange={(e) => setContractorId(e.target.value)}>
+              <option value="">Select a contractor…</option>
+              {(contractorOptions ?? []).map((c) => (
+                <option key={c.id} value={c.id} disabled={!c.eligible}>
+                  {c.businessName}
+                  {c.eligible ? "" : ` — ${c.ineligibleReason}`}
+                </option>
+              ))}
+            </Select>
+            {contractorOptions && contractorOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">No contractors have registered yet.</p>
+            )}
             <Button size="sm" variant="outline" disabled={invite.isPending || !contractorId} onClick={() => invite.mutate(contractorId)}>
-              Invite
+              {invite.isPending ? "Inviting…" : "Invite"}
             </Button>
+            {invite.isSuccess && <p className="text-xs text-[var(--success)]">Invited ✓</p>}
           </div>
 
           {/* Create proposal */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Create proposal from bid (id)</Label>
-            <Input value={bidId} onChange={(e) => setBidId(e.target.value)} placeholder="bid uuid" />
+            <Label className="text-xs">Create proposal from bid</Label>
+            <Select value={bidId} onChange={(e) => setBidId(e.target.value)}>
+              <option value="">
+                {bidOptions && bidOptions.length === 0 ? "No bids submitted yet" : "Select a bid…"}
+              </option>
+              {(bidOptions ?? []).map((b) => (
+                <option key={b.bidId} value={b.bidId}>
+                  {b.contractorName} — net {formatCents(b.netTotalCents)} → retail{" "}
+                  {formatCents(b.previewRetailCents)}
+                </option>
+              ))}
+            </Select>
+            {selectedBid && (
+              <p className="text-xs text-muted-foreground">
+                Margin if accepted: <span className="font-medium">{formatCents(selectedBid.previewMarginCents)}</span>
+                {selectedBid.durationDays ? ` · ~${selectedBid.durationDays} day(s)` : ""}
+              </p>
+            )}
             <Input value={scope} onChange={(e) => setScope(e.target.value)} placeholder="scope (optional)" />
             <Button
               size="sm"

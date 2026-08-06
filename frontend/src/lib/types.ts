@@ -183,6 +183,25 @@ export interface AdminProposal {
   status: string;
 }
 
+export interface ContractorOption {
+  id: string;
+  businessName: string;
+  status: string;
+  eligible: boolean;
+  ineligibleReason: string | null;
+}
+
+export interface BidOption {
+  bidId: string;
+  contractorId: string;
+  contractorName: string;
+  netTotalCents: number;
+  previewRetailCents: number;
+  previewMarginCents: number;
+  durationDays: number | null;
+  submittedAt: string;
+}
+
 export interface CustomerChangeOrder {
   id: string;
   jobId: string;

@@ -37,6 +37,27 @@ public final class AdminDtos {
             Long customerRetailHigh
     ) {}
 
+    /** A contractor the admin can invite to a job (pick-list entry). */
+    public record ContractorOption(
+            UUID id,
+            String businessName,
+            String status,
+            boolean eligible,
+            String ineligibleReason
+    ) {}
+
+    /** A submitted bid the admin can turn into a proposal (pick-list entry). */
+    public record BidOption(
+            UUID bidId,
+            UUID contractorId,
+            String contractorName,
+            long netTotalCents,
+            long previewRetailCents,
+            long previewMarginCents,
+            Integer durationDays,
+            java.time.Instant submittedAt
+    ) {}
+
     /** Proposal view showing the confidential margin — admin only. */
     public record AdminProposalView(
             UUID proposalId,

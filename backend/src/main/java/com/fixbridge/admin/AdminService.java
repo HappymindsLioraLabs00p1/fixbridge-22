@@ -70,6 +70,38 @@ public class AdminService {
                 .toList();
     }
 
+    /** Contractors the admin can pick from when dispatching, with eligibility spelled out. */
+    @Transactional(readOnly = true)
+    public List<AdminDtos.ContractorOption> contractorOptions() {
+        return contractors.findAll().stream()
+                .map(c -> new AdminDtos.ContractorOption(
+                        c.getId(), c.getBusinessName(), c.getStatus().name(),
+                        c.isEligibleForWork(), ineligibleReason(c)))
+                .toList();
+    }
+
+    private String ineligibleReason(Contractor c) {
+        if (c.getStatus() != ContractorStatus.approved) return "Not approved (" + c.getStatus().name() + ")";
+        if (!c.isConnectOnboarded()) return "Stripe Connect onboarding incomplete";
+        if (!c.isPayoutsEnabled()) return "Payouts not enabled";
+        return null;
+    }
+
+    /** Bids submitted for a job, each with the retail/margin the pricing engine would produce. */
+    @Transactional(readOnly = true)
+    public List<AdminDtos.BidOption> bidOptions(UUID jobId) {
+        return bids.findByJobId(jobId).stream()
+                .map(b -> {
+                    long retail = pricingEngine.retailForNet(b.getNetTotalCents());
+                    String name = contractors.findById(b.getContractorId())
+                            .map(Contractor::getBusinessName).orElse("Unknown contractor");
+                    return new AdminDtos.BidOption(
+                            b.getId(), b.getContractorId(), name, b.getNetTotalCents(),
+                            retail, retail - b.getNetTotalCents(), b.getDurationDays(), b.getCreatedAt());
+                })
+                .toList();
+    }
+
     @Transactional
     public void inviteContractor(AuthUser admin, UUID jobId, UUID contractorId) {
         Job job = jobService.requireJob(jobId);
