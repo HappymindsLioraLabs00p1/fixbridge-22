@@ -1,51 +1,33 @@
 @import "tailwindcss";
 
 /*
- * ShadCN-style design tokens. --primary/--ring are driven by --brand-primary, which is injected at
- * runtime from the single brand config (src/config/brand.ts) — so the whole palette rebrands in one place.
+ * FixBridge design tokens — matched to the brand site (fixbridge.netlify.app):
+ * cream canvas, near-black ink, coral accent, condensed display type.
+ * --primary/--ring derive from --brand-primary (injected from src/config/brand.ts).
  */
 :root {
-  --background: #ffffff;
-  --foreground: #0b0f19;
+  --background: #f8f6f2;
+  --foreground: #0a0a0a;
   --card: #ffffff;
-  --card-foreground: #0b0f19;
+  --card-foreground: #0a0a0a;
   --popover: #ffffff;
-  --popover-foreground: #0b0f19;
-  --primary: var(--brand-primary, #1f6feb);
+  --popover-foreground: #0a0a0a;
+  --primary: var(--brand-primary, #ff4d1c);
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0b0f19;
-  --muted: #f4f4f5;
-  --muted-foreground: #64748b;
-  --accent: #eef2ff;
-  --accent-foreground: #0b0f19;
-  --destructive: #dc2626;
+  --secondary: #efece6;
+  --secondary-foreground: #0a0a0a;
+  --muted: #efece6;
+  --muted-foreground: #6b6560;
+  --accent: #fdeee9;
+  --accent-foreground: #0a0a0a;
+  --destructive: #c02626;
   --destructive-foreground: #ffffff;
-  --success: #16a34a;
-  --warning: #d97706;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: var(--brand-primary, #1f6feb);
-  --radius: 0.65rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b0f19;
-    --foreground: #e5e7eb;
-    --card: #111725;
-    --card-foreground: #e5e7eb;
-    --popover: #111725;
-    --popover-foreground: #e5e7eb;
-    --secondary: #1e293b;
-    --secondary-foreground: #e5e7eb;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #1e293b;
-    --accent-foreground: #e5e7eb;
-    --border: #1f2937;
-    --input: #1f2937;
-  }
+  --success: #157a4a;
+  --warning: #b45309;
+  --border: #e4ded4;
+  --input: #e4ded4;
+  --ring: var(--brand-primary, #ff4d1c);
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -70,9 +52,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
 }
 
 * {
@@ -83,4 +65,61 @@ body {
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Heavy condensed display type for headings/wordmark, matching the brand site. */
+.font-display {
+  font-family: var(--font-display, "Barlow Condensed"), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+/* Edge-to-edge marquee used on the landing page. */
+@keyframes fb-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.fb-marquee {
+  animation: fb-marquee 30s linear infinite;
+}
+
+/* Corner mascot assistant. */
+@keyframes fb-pop {
+  0% { transform: scale(0) translateY(30px); opacity: 0; }
+  70% { transform: scale(1.08) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes fb-bob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-6px) rotate(1deg); }
+}
+@keyframes fb-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-18deg); }
+  75% { transform: rotate(18deg); }
+}
+@keyframes fb-bubble {
+  0% { transform: scale(0.6) translateY(8px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.fb-pop { animation: fb-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.fb-bob { animation: fb-bob 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
+.fb-wave { animation: fb-wave 0.9s ease-in-out infinite; transform-origin: 78% 62%; }
+.fb-bubble { animation: fb-bubble 0.35s ease-out 0.5s both; }
+
+/* Splash "getting ready to repair" bounce, and the fly-to-corner transition. */
+@keyframes fb-ready {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+  50% { transform: translateY(-10px) rotate(2.5deg); }
+}
+.fb-ready { animation: fb-ready 0.6s ease-in-out infinite; }
+@keyframes fb-spark {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: scale(1) rotate(180deg); opacity: 0.9; }
+}
+.fb-mascot-move { transition: transform 0.85s cubic-bezier(0.5, 0, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .fb-ready, .fb-bob, .fb-wave { animation: none; }
+  .fb-mascot-move { transition: none; }
 }

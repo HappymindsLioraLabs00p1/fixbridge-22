@@ -5,11 +5,14 @@
  */
 export const brand = {
   name: process.env.NEXT_PUBLIC_BRAND_NAME ?? "FixBridge",
-  tagline: "AI-guided property care, verified pros, one clear price.",
+  tagline: "Home repair, fixed by AI.",
+  region: "NYC & Long Island",
+  established: "2026",
   supportEmail: process.env.NEXT_PUBLIC_BRAND_SUPPORT_EMAIL ?? "support@example.com",
   domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN ?? "example.com",
-  primaryColor: process.env.NEXT_PUBLIC_BRAND_PRIMARY_COLOR ?? "#1f6feb",
-  // A short wordmark used where a logo image is not yet configured.
+  // Coral accent, matching the FixBridge brand.
+  primaryColor: process.env.NEXT_PUBLIC_BRAND_PRIMARY_COLOR ?? "#FF4D1C",
+  // Split wordmark: "FIX" (ink) + "BRIDGE" (accent) + "AI" badge.
   wordmark: process.env.NEXT_PUBLIC_BRAND_NAME ?? "FixBridge",
 } as const;
 

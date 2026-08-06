@@ -1,6 +1,9 @@
 import { useAuth } from "@/store/auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// Default to SAME-ORIGIN ("") so the browser calls "/api/*", which Next proxies to the backend
+// (see next.config rewrites). Works locally and behind an https tunnel/deploy with no mixed-content
+// or CORS. Set NEXT_PUBLIC_API_URL only to point at a different backend origin explicitly.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export class ApiError extends Error {
   status: number;

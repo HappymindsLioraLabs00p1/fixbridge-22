@@ -28,18 +28,20 @@ export function SiteHeader() {
   useEffect(() => setMounted(true), []);
 
   const role = mounted && user ? primaryRole(user.roles) : null;
+  // The app icon routes into the app: the signed-in user's dashboard, otherwise the landing page.
+  const iconHref = role ? HOME_FOR_ROLE[role] ?? "/customer" : "/";
 
   return (
-    <header className="border-b bg-card">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary-foreground"
-            style={{ background: "var(--primary)" }}
-          >
-            {brand.wordmark.charAt(0)}
+    <header className="border-b bg-background">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+        <Link href={iconHref} aria-label={`${brand.name} — go to dashboard`} className="flex items-center">
+          {/* App icon: FIX over BRIDGE·AI, stacked on dark blue. */}
+          <span className="flex flex-col items-center justify-center rounded-lg bg-[#0B2447] px-2.5 py-1 leading-[0.82] text-white shadow-sm">
+            <span className="font-display text-xl tracking-wide">FIX</span>
+            <span className="font-display text-[10px] tracking-[0.12em]">
+              BRIDGE <span className="text-primary">AI</span>
+            </span>
           </span>
-          <span>{brand.name}</span>
         </Link>
 
         <nav className="flex items-center gap-2">
@@ -76,11 +78,11 @@ export function SiteHeader() {
             <>
               <Link href="/login">
                 <Button variant="ghost" size="sm">
-                  Sign in
+                  Sign In
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="sm">Get started</Button>
+                <Button size="sm">Post a Repair</Button>
               </Link>
             </>
           )}

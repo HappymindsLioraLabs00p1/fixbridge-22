@@ -1,0 +1,159 @@
+<style>
+  :root {
+    --navy: #0b2447;
+    --navy-2: #123163;
+    --coral: #ff4d1c;
+    --ground: #f5f2ec;
+    --card: #ffffff;
+    --ink: #14181f;
+    --muted: #6b6560;
+    --line: #e5ded3;
+    --shadow: 0 18px 40px -18px rgba(11, 36, 71, 0.45);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0a0f16;
+      --card: #121a26;
+      --ink: #eaecef;
+      --muted: #97a1ad;
+      --line: #223042;
+      --shadow: 0 20px 46px -20px rgba(0, 0, 0, 0.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0a0f16; --card: #121a26; --ink: #eaecef; --muted: #97a1ad; --line: #223042;
+    --shadow: 0 20px 46px -20px rgba(0, 0, 0, 0.7);
+  }
+  :root[data-theme="light"] {
+    --ground: #f5f2ec; --card: #ffffff; --ink: #14181f; --muted: #6b6560; --line: #e5ded3;
+    --shadow: 0 18px 40px -18px rgba(11, 36, 71, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  .wrap {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    padding: 56px 20px;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: center;
+  }
+
+  /* The app icon — itself the launch control */
+  .tile {
+    --size: 176px;
+    width: var(--size);
+    height: var(--size);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 34px;
+    background: radial-gradient(120% 120% at 30% 20%, var(--navy-2), var(--navy));
+    color: #fff;
+    text-decoration: none;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease;
+  }
+  .tile:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 26px 54px -18px rgba(11, 36, 71, 0.55); }
+  .tile:focus-visible { outline: 3px solid var(--coral); outline-offset: 4px; }
+  .tile .fix {
+    font-family: "Barlow Condensed", "Oswald", "Arial Narrow", ui-sans-serif, sans-serif;
+    font-weight: 800;
+    font-size: 62px;
+    line-height: 0.82;
+    letter-spacing: 2px;
+  }
+  .tile .bridge {
+    font-family: "Barlow Condensed", "Oswald", "Arial Narrow", ui-sans-serif, sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: 3px;
+    line-height: 1;
+  }
+  .tile .ai { color: var(--coral); }
+  .tile .cap {
+    margin-top: 12px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .lede { display: flex; flex-direction: column; gap: 4px; }
+  .lede h1 {
+    margin: 0;
+    font-family: "Barlow Condensed", "Oswald", "Arial Narrow", ui-sans-serif, sans-serif;
+    font-weight: 800;
+    font-size: 30px;
+    letter-spacing: 0.5px;
+  }
+  .lede p { margin: 0; color: var(--muted); font-size: 15px; }
+  .open {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 4px; font-size: 14px; font-weight: 600; color: var(--coral); text-decoration: none;
+  }
+  .open:hover { text-decoration: underline; }
+
+  .card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px 18px;
+    text-align: left;
+  }
+  .card h2 {
+    margin: 0 0 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted);
+  }
+  .cred { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; }
+  .cred + .cred { border-top: 1px solid var(--line); }
+  .cred .role { font-size: 13px; font-weight: 600; }
+  .cred .email {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .pw { margin-top: 11px; font-size: 12px; color: var(--muted); }
+  .pw b { color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .note { max-width: 380px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile { transition: none; }
+    .tile:hover { transform: none; }
+  }
+</style>
+
+<div class="wrap">
+  <a class="tile" href="https://marilyn-lens-coastal-blue.trycloudflare.com/login" target="_blank" rel="noopener" aria-label="Open the FixBridge app">
+    <span class="fix">FIX</span>
+    <span class="bridge">BRIDGE <span class="ai">AI</span></span>
+    <span class="cap">Tap to open</span>
+  </a>
+
+  <div class="lede">
+    <h1>FixBridge</h1>
+    <p>Home repair, fixed by AI.</p>
+    <a class="open" href="https://marilyn-lens-coastal-blue.trycloudflare.com/login" target="_blank" rel="noopener">Open the app ↗</a>
+  </div>
+
+  <div class="card">
+    <h2>Test sign-in</h2>
+    <div class="cred"><span class="role">Homeowner</span><span class="email">customer@demo.local</span></div>
+    <div class="cred"><span class="role">Admin</span><span class="email">admin@demo.local</span></div>
+    <div class="cred"><span class="role">Contractor</span><span class="email">contractor@demo.local</span></div>
+    <p class="pw">Password for all three: <b>password123</b></p>
+  </div>
+
+  <p class="note">This opens the live demo build. It's a temporary link that works while the demo server is running; if it goes offline, ask for a fresh URL.</p>
+</div>

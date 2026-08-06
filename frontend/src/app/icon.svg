@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="108" fill="#0B2447"/>
+  <g font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="900" text-anchor="middle">
+    <text x="256" y="252" font-size="210" fill="#ffffff" letter-spacing="6">FIX</text>
+    <text x="256" y="392" font-size="120" fill="#ffffff" letter-spacing="3">BRIDGE <tspan fill="#FF4D1C">AI</tspan></text>
+  </g>
+</svg>
