@@ -66,3 +66,20 @@ export const api = {
   post: <T>(path: string, body?: unknown) =>
     apiFetch<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
 };
+
+/**
+ * Two-step upload: ask the API for a signed target, then PUT the file straight to storage.
+ * Returns the object key to attach to a report. The raw bytes never pass through our JSON API.
+ */
+export async function uploadFile(file: File): Promise<string> {
+  const target = await api.post<{ objectKey: string; uploadUrl: string }>("/api/media/upload-url", {
+    contentType: file.type || "application/octet-stream",
+  });
+  const res = await fetch(target.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+    body: file,
+  });
+  if (!res.ok) throw new ApiError(res.status, "Upload failed");
+  return target.objectKey;
+}

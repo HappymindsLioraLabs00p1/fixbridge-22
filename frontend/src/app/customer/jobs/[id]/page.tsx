@@ -57,6 +57,24 @@ export default function JobDetailPage() {
               </Card>
             )}
 
+            {job.media && job.media.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {job.media.map((m, i) =>
+                  m.mediaType === "video" ? (
+                    <video key={i} src={m.url} controls className="w-full rounded-md border" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={m.url}
+                      alt="attachment"
+                      className="aspect-square w-full rounded-md border object-cover"
+                    />
+                  ),
+                )}
+              </div>
+            )}
+
             {job.estimate && (
               <Card>
                 <CardHeader>

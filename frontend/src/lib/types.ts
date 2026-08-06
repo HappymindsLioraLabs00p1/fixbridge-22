@@ -75,6 +75,11 @@ export interface EstimateView {
   disclaimer: string;
 }
 
+export interface MediaView {
+  mediaType: string;
+  url: string;
+}
+
 export interface JobDetail {
   id: string;
   status: JobStatus;
@@ -83,7 +88,15 @@ export interface JobDetail {
   preferredTime: string | null;
   assessment: AssessmentView | null;
   estimate: EstimateView | null;
+  media: MediaView[];
   createdAt: string;
+}
+
+export interface UploadTarget {
+  objectKey: string;
+  uploadUrl: string;
+  method: string;
+  contentType: string;
 }
 
 export interface JobSummary {

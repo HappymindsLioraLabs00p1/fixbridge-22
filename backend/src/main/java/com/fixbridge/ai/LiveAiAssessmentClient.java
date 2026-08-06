@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -49,11 +50,13 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
     }
 
     @Override
-    public AssessmentResult assess(String description, List<String> mediaKeys) {
-        String prompt = SYSTEM + "\n\nReported issue: " + (description == null ? "" : description)
-                + "\nImages attached: " + (mediaKeys == null ? 0 : mediaKeys.size());
+    public AssessmentResult assess(String description, List<String> imageUrls) {
+        List<String> images = imageUrls == null ? List.of() : imageUrls;
+        String prompt = SYSTEM + "\n\nReported issue: " + (description == null ? "" : description);
         try {
-            return "claude".equalsIgnoreCase(cfg.provider()) ? callClaude(prompt) : callOpenAi(prompt);
+            return "claude".equalsIgnoreCase(cfg.provider())
+                    ? callClaude(prompt, images)
+                    : callOpenAi(prompt, images);
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
@@ -63,10 +66,15 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
         }
     }
 
-    private AssessmentResult callOpenAi(String prompt) {
+    private AssessmentResult callOpenAi(String prompt, List<String> imageUrls) {
+        List<Map<String, Object>> content = new ArrayList<>();
+        content.add(Map.of("type", "input_text", "text", prompt));
+        for (String url : imageUrls) {
+            content.add(Map.of("type", "input_image", "image_url", url));
+        }
         Map<String, Object> body = Map.of(
                 "model", cfg.openai().model(),
-                "input", prompt,
+                "input", List.of(Map.of("role", "user", "content", content)),
                 "text", Map.of("format", Map.of(
                         "type", "json_schema",
                         "name", "assessment",
@@ -77,7 +85,12 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
         return AssessmentJson.parse(extractOpenAiJson(root));
     }
 
-    private AssessmentResult callClaude(String prompt) {
+    private AssessmentResult callClaude(String prompt, List<String> imageUrls) {
+        List<Map<String, Object>> content = new ArrayList<>();
+        content.add(Map.of("type", "text", "text", prompt));
+        for (String url : imageUrls) {
+            content.add(Map.of("type", "image", "source", Map.of("type", "url", "url", url)));
+        }
         Map<String, Object> body = Map.of(
                 "model", cfg.claude().model(),
                 "max_tokens", 1024,
@@ -86,7 +99,7 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
                         "description", "Return the structured property-maintenance assessment.",
                         "input_schema", AssessmentJson.schema())),
                 "tool_choice", Map.of("type", "tool", "name", "assessment"),
-                "messages", List.of(Map.of("role", "user", "content", prompt)));
+                "messages", List.of(Map.of("role", "user", "content", content)));
         JsonNode root = claude.post().uri("/messages")
                 .bodyValue(body).retrieve().bodyToMono(JsonNode.class).block();
         return AssessmentJson.parse(extractClaudeToolInput(root));

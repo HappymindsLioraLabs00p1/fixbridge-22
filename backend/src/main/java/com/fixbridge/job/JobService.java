@@ -32,10 +32,13 @@ public class JobService {
     private final PricingEngine pricingEngine;
     private final JobPricingRepository jobPricing;
     private final JobStatusHistoryRepository statusHistory;
+    private final JobMediaRepository jobMedia;
+    private final com.fixbridge.storage.StorageService storage;
 
     public JobService(JobRepository jobs, PropertyRepository properties, AiService aiService,
                       AiAssessmentRepository assessments, PricingEngine pricingEngine,
-                      JobPricingRepository jobPricing, JobStatusHistoryRepository statusHistory) {
+                      JobPricingRepository jobPricing, JobStatusHistoryRepository statusHistory,
+                      JobMediaRepository jobMedia, com.fixbridge.storage.StorageService storage) {
         this.jobs = jobs;
         this.properties = properties;
         this.aiService = aiService;
@@ -43,6 +46,8 @@ public class JobService {
         this.pricingEngine = pricingEngine;
         this.jobPricing = jobPricing;
         this.statusHistory = statusHistory;
+        this.jobMedia = jobMedia;
+        this.storage = storage;
     }
 
     /** Customer reports an issue → AI assessment → server-side retail estimate. */
@@ -64,6 +69,13 @@ public class JobService {
         job.setStatus(JobStatus.draft);
         job = jobs.save(job);
         recordStatus(job.getId(), null, JobStatus.draft, user.id());
+
+        // Persist attached media (uploaded directly to storage; we store only the object keys).
+        if (req.mediaKeys() != null) {
+            for (String key : req.mediaKeys()) {
+                jobMedia.save(new JobMedia(job.getId(), key, mediaTypeOf(key)));
+            }
+        }
 
         // AI assessment (structured, safety-gated) — never sets price.
         AssessmentResult assessment = aiService.assessAndStore(
@@ -146,7 +158,7 @@ public class JobService {
                 estimate.priceAvailable(), estimate.retailLowCents(), estimate.retailHighCents(),
                 estimate.message(), estimate.disclaimer());
         return new JobDtos.JobDetailView(job.getId(), job.getStatus(), job.getTitle(), job.getDescription(),
-                job.getPreferredTime(), av, ev, job.getCreatedAt());
+                job.getPreferredTime(), av, ev, mediaViews(job.getId()), job.getCreatedAt());
     }
 
     private JobDtos.JobDetailView toDetailFromStored(Job job, AiAssessmentEntity a, JobPricing p) {
@@ -167,7 +179,17 @@ public class JobService {
                     "A verified professional will confirm pricing after assessing on site.");
         }
         return new JobDtos.JobDetailView(job.getId(), job.getStatus(), job.getTitle(), job.getDescription(),
-                job.getPreferredTime(), av, ev, job.getCreatedAt());
+                job.getPreferredTime(), av, ev, mediaViews(job.getId()), job.getCreatedAt());
+    }
+
+    private List<JobDtos.MediaView> mediaViews(UUID jobId) {
+        return jobMedia.findByJobIdOrderByCreatedAtAsc(jobId).stream()
+                .map(m -> new JobDtos.MediaView(m.getMediaType(), storage.createDownloadUrl(m.getStorageKey())))
+                .toList();
+    }
+
+    private static String mediaTypeOf(String key) {
+        return key != null && key.toLowerCase().endsWith(".mp4") ? "video" : "image";
     }
 
     // Expose confidence threshold helper for other services if needed

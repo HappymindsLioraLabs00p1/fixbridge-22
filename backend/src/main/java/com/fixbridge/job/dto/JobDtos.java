@@ -45,6 +45,9 @@ public final class JobDtos {
             String disclaimer
     ) {}
 
+    /** A stored photo/video with a short-lived signed view URL. */
+    public record MediaView(String mediaType, String url) {}
+
     public record JobDetailView(
             UUID id,
             JobStatus status,
@@ -53,6 +56,7 @@ public final class JobDtos {
             String preferredTime,
             AssessmentView assessment,
             EstimateView estimate,
+            List<MediaView> media,
             Instant createdAt
     ) {}
 

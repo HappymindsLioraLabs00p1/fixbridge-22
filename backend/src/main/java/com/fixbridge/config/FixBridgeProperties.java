@@ -40,7 +40,7 @@ public record FixBridgeProperties(
             String connectRefreshUrl
     ) {}
 
-    public record Storage(String bucket, long signedUrlTtlMinutes) {}
+    public record Storage(String bucket, long signedUrlTtlMinutes, String publicBaseUrl) {}
 
     public record Twilio(String accountSid, String authToken, String fromNumber) {}
 

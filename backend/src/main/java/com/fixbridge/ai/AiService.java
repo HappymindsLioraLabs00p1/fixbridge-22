@@ -22,16 +22,24 @@ public class AiService {
     private final AiAssessmentClient client;
     private final AiAssessmentRepository repository;
     private final ObjectMapper objectMapper;
+    private final com.fixbridge.storage.StorageService storage;
 
-    public AiService(AiAssessmentClient client, AiAssessmentRepository repository, ObjectMapper objectMapper) {
+    public AiService(AiAssessmentClient client, AiAssessmentRepository repository, ObjectMapper objectMapper,
+                     com.fixbridge.storage.StorageService storage) {
         this.client = client;
         this.repository = repository;
         this.objectMapper = objectMapper;
+        this.storage = storage;
     }
 
     /** Assess an issue and persist the structured result against the job. */
     public AssessmentResult assessAndStore(UUID jobId, String description, List<String> mediaKeys) {
-        AssessmentResult result = client.assess(description, mediaKeys);
+        // Resolve image object keys to short-lived signed URLs the AI provider can fetch.
+        List<String> imageUrls = (mediaKeys == null ? List.<String>of() : mediaKeys).stream()
+                .filter(AiService::isImage)
+                .map(storage::createDownloadUrl)
+                .toList();
+        AssessmentResult result = client.assess(description, imageUrls);
         result = enforceSafety(result);
 
         AiAssessmentEntity entity = new AiAssessmentEntity();
@@ -51,6 +59,11 @@ public class AiService {
         entity.setRawJson(objectMapper.convertValue(result, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
         repository.save(entity);
         return result;
+    }
+
+    private static boolean isImage(String key) {
+        String k = key == null ? "" : key.toLowerCase();
+        return k.endsWith(".jpg") || k.endsWith(".jpeg") || k.endsWith(".png") || k.endsWith(".webp");
     }
 
     /**

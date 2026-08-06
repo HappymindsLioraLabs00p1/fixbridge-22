@@ -77,6 +77,8 @@ fixbridge:
   storage:
     bucket: ${GCS_BUCKET:fixbridge-dev}
     signed-url-ttl-minutes: ${SIGNED_URL_TTL:15}
+    # In stub mode, uploads/downloads route to this backend's own local object store.
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:http://localhost:8080}
   twilio:
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}

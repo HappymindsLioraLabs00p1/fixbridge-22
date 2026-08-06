@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
 import { useProperties, useReportIssue } from "@/lib/hooks";
-import { ApiError } from "@/lib/api";
+import { ApiError, uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,15 +21,23 @@ export default function ReportPage() {
   const [propertyId, setPropertyId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<JobDetail | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    report.mutate(
-      { propertyId, title, description },
-      { onSuccess: setResult },
-    );
+    setUploading(true);
+    try {
+      const mediaKeys: string[] = [];
+      for (const f of files) mediaKeys.push(await uploadFile(f));
+      report.mutate({ propertyId, title, description, mediaKeys }, { onSuccess: setResult });
+    } finally {
+      setUploading(false);
+    }
   }
+
+  const busy = uploading || report.isPending;
 
   return (
     <RequireRole role="customer">
@@ -84,13 +92,27 @@ export default function ReportPage() {
                     placeholder="Describe the issue. Mention anything about water, electrical, gas or smoke."
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="media">Photos or video (optional)</Label>
+                  <input
+                    id="media"
+                    type="file"
+                    accept="image/*,video/mp4"
+                    multiple
+                    onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                    className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm"
+                  />
+                  {files.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{files.length} file(s) selected</p>
+                  )}
+                </div>
                 {report.isError && (
                   <p className="text-sm text-destructive">
                     {(report.error as ApiError)?.message ?? "Something went wrong. Please try again."}
                   </p>
                 )}
-                <Button type="submit" disabled={report.isPending || !propertyId}>
-                  {report.isPending ? "Analyzing…" : "Get assessment"}
+                <Button type="submit" disabled={busy || !propertyId}>
+                  {uploading ? "Uploading…" : report.isPending ? "Analyzing…" : "Get assessment"}
                 </Button>
               </form>
             </CardContent>

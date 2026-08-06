@@ -91,6 +91,12 @@
             <artifactId>stripe-java</artifactId>
             <version>${stripe.version}</version>
         </dependency>
+        <!-- Google Cloud Storage (private buckets + v4 signed URLs) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
+            <version>2.43.2</version>
+        </dependency>
         <!-- Actuator (health/metrics) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

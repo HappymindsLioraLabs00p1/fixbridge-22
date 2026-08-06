@@ -22,7 +22,7 @@ public final class TestFixtures {
         var brand = new FixBridgeProperties.Brand("FixBridge", "support@example.com", "example.com", "#1f6feb");
         var stripe = new FixBridgeProperties.Stripe("", "", "http://localhost:3000/ok",
                 "http://localhost:3000/cancel", "http://localhost:3000/return", "http://localhost:3000/refresh");
-        var storage = new FixBridgeProperties.Storage("bucket", 15);
+        var storage = new FixBridgeProperties.Storage("bucket", 15, "http://localhost:8080");
         var twilio = new FixBridgeProperties.Twilio("", "", "");
         var resend = new FixBridgeProperties.Resend("", "notifications@example.com");
         return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend);

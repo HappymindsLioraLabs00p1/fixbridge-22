@@ -2,6 +2,7 @@ package com.fixbridge.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fixbridge.common.enums.AiUrgency;
+import com.fixbridge.storage.StorageService;
 import com.fixbridge.support.TestFixtures;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +22,7 @@ class AiServiceTest {
         when(client.assess(any(), any())).thenReturn(fromClient);
         when(client.provider()).thenReturn("stub");
         when(client.model()).thenReturn("gpt-test");
-        return new AiService(client, repo, new ObjectMapper());
+        return new AiService(client, repo, new ObjectMapper(), mock(StorageService.class));
     }
 
     @Test
