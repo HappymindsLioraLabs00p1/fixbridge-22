@@ -119,6 +119,13 @@ export interface BillingCheckout {
   url: string;
 }
 
+export interface NotificationItem {
+  template: string;
+  channel: string;
+  jobId: string | null;
+  createdAt: string;
+}
+
 export interface JobSummary {
   id: string;
   status: JobStatus;

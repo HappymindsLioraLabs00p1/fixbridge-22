@@ -55,6 +55,11 @@ export function SiteHeader() {
                   Plans
                 </Button>
               </Link>
+              <Link href="/notifications">
+                <Button variant="ghost" size="sm">
+                  Activity
+                </Button>
+              </Link>
               <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
               <Button
                 variant="outline"

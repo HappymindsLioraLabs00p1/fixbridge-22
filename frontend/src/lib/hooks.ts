@@ -14,6 +14,7 @@ import type {
   CustomerProposal,
   JobDetail,
   JobSummary,
+  NotificationItem,
   PlanView,
   Property,
   SubscriptionView,
@@ -234,5 +235,14 @@ export function useCurrentSubscription() {
 export function useSubscribe() {
   return useMutation({
     mutationFn: (planCode: string) => api.post<BillingCheckout>("/api/billing/checkout", { planCode }),
+  });
+}
+
+// ---- Notification feed ----
+export function useNotifications() {
+  return useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => api.get<NotificationItem[]>("/api/notifications"),
+    refetchInterval: 30_000,
   });
 }

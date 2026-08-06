@@ -43,6 +43,17 @@ public class NotificationService {
         this.brand = props.brand().name();
     }
 
+    /** The signed-in user's notification feed (most recent first). */
+    public java.util.List<com.fixbridge.notification.dto.NotificationDtos.View> listFor(UUID userId) {
+        return notifications.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(n -> new com.fixbridge.notification.dto.NotificationDtos.View(
+                        n.getTemplate(),
+                        n.getChannel(),
+                        n.getPayload() == null ? null : String.valueOf(n.getPayload().get("jobId")),
+                        n.getCreatedAt()))
+                .toList();
+    }
+
     @Async
     public void contractorInvited(UUID contractorId, UUID jobId) {
         contractorRecipient(contractorId).ifPresent(r -> send(r, "contractor_invited", jobId,
