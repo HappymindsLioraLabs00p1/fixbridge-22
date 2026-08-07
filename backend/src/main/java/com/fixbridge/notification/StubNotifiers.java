@@ -33,7 +33,10 @@ public final class StubNotifiers {
 
         @Override
         public boolean sendEmail(String toEmail, String subject, String htmlBody) {
-            log.info("[stub-email] to={} subject={}", toEmail, subject);
+            // The body is logged deliberately: in stub mode no mail is actually delivered, so this is
+            // the only way to follow a password-reset or verification link locally. Stub mode is for
+            // local/demo use only — live mode uses ResendEmailSender and logs nothing sensitive.
+            log.info("[stub-email] to={} subject={}\n{}", toEmail, subject, htmlBody);
             return true;
         }
     }

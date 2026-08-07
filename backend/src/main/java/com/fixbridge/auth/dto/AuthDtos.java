@@ -28,6 +28,18 @@ public final class AuthDtos {
 
     public record RefreshRequest(@NotBlank String refreshToken) {}
 
+    public record ForgotPasswordRequest(@Email @NotBlank String email) {}
+
+    public record ResetPasswordRequest(
+            @NotBlank String token,
+            @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") String newPassword
+    ) {}
+
+    public record VerifyEmailRequest(@NotBlank String token) {}
+
+    /** Deliberately generic so a caller cannot tell whether an account exists. */
+    public record MessageResponse(String message) {}
+
     public record UserView(UUID id, String email, String fullName, List<UserRole> roles) {}
 
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, UserView user) {

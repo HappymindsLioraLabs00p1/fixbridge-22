@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthTokenService authTokenService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AuthTokenService authTokenService) {
         this.authService = authService;
+        this.authTokenService = authTokenService;
     }
 
     @PostMapping("/register")
@@ -31,6 +33,29 @@ public class AuthController {
     @PostMapping("/refresh")
     public AuthDtos.TokenResponse refresh(@Valid @RequestBody AuthDtos.RefreshRequest req) {
         return authService.refresh(req);
+    }
+
+    /**
+     * Start a password reset. Always returns the same message — revealing whether an address has an
+     * account would let an attacker enumerate users.
+     */
+    @PostMapping("/forgot-password")
+    public AuthDtos.MessageResponse forgotPassword(@Valid @RequestBody AuthDtos.ForgotPasswordRequest req) {
+        authTokenService.requestPasswordReset(req.email());
+        return new AuthDtos.MessageResponse(
+                "If an account exists for that address, we've sent a link to reset the password.");
+    }
+
+    @PostMapping("/reset-password")
+    public AuthDtos.MessageResponse resetPassword(@Valid @RequestBody AuthDtos.ResetPasswordRequest req) {
+        authTokenService.resetPassword(req.token(), req.newPassword());
+        return new AuthDtos.MessageResponse("Your password has been changed. You can sign in now.");
+    }
+
+    @PostMapping("/verify-email")
+    public AuthDtos.MessageResponse verifyEmail(@Valid @RequestBody AuthDtos.VerifyEmailRequest req) {
+        authTokenService.verifyEmail(req.token());
+        return new AuthDtos.MessageResponse("Your email address is confirmed.");
     }
 
     @GetMapping("/me")
