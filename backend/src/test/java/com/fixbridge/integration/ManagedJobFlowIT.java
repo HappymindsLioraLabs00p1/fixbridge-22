@@ -109,6 +109,20 @@ class ManagedJobFlowIT {
         assertThat(postText("/api/webhooks/stripe", stripeEvent("evt_d_" + rnd, "checkout.session.completed", session))).isEqualTo("already processed");
         assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("awaiting_contractor");
 
+        // A contractor cannot be dispatched until licence and insurance are verified (FR-CON-3).
+        for (String docKind : new String[] {"license", "insurance"}) {
+            post("/api/contractor/documents",
+                    json("kind", docKind, "number", "NY-" + docKind, "jurisdiction", "NY",
+                            "expiresOn", java.time.LocalDate.now().plusYears(2).toString()), conToken);
+        }
+        Map<String, Object> beforeReview = get("/api/admin/contractors/" + contractorId + "/compliance", adminToken);
+        assertThat(beforeReview.get("compliant")).isEqualTo(false); // uploading alone is not enough
+        for (Map<String, Object> d : (List<Map<String, Object>>) beforeReview.get("documents")) {
+            post("/api/admin/documents/" + d.get("id") + "/review", json("approve", true, "note", "ok"), adminToken);
+        }
+        assertThat(get("/api/admin/contractors/" + contractorId + "/compliance", adminToken).get("compliant"))
+                .isEqualTo(true);
+
         // Admin invites → contractor bids (confidential net) → admin builds retail proposal.
         post("/api/admin/jobs/" + jobId + "/invite", json("contractorId", contractorId), adminToken);
         post("/api/contractor/jobs/" + jobId + "/bid",
@@ -146,7 +160,15 @@ class ManagedJobFlowIT {
         assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("work_started");
 
         post("/api/contractor/jobs/" + jobId + "/completion", json("summary", "Replaced trap; tested, no leaks."), conToken);
-        assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("work_completed");
+        // Completion now waits on the customer rather than going straight through (FR-JOB-8).
+        assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("customer_review_pending");
+
+        // Money must not move before the customer signs off.
+        Map<String, Object> blocked = post("/api/admin/jobs/" + jobId + "/payout", null, adminToken);
+        assertThat(((Number) blocked.get("status")).intValue()).isEqualTo(409);
+
+        post("/api/jobs/" + jobId + "/confirm-completion", null, custToken);
+        assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("admin_review_pending");
 
         Map<String, Object> payout = post("/api/admin/jobs/" + jobId + "/payout", null, adminToken);
         assertThat(payout.get("status")).isEqualTo("paid");
