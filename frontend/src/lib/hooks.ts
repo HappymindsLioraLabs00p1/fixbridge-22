@@ -9,6 +9,7 @@ import type {
   AdminProposal,
   BidOption,
   BillingCheckout,
+  CompletionView,
   ContractorOption,
   CheckoutView,
   ContractorInvitation,
@@ -133,8 +134,35 @@ export function useSubmitBid(jobId: string) {
 
 export function useSubmitCompletion(jobId: string) {
   return useMutation({
-    mutationFn: (body: { summary: string; materialsUsed?: string }) =>
-      api.post(`/api/contractor/jobs/${jobId}/completion`, body),
+    mutationFn: (body: {
+      summary: string;
+      materialsUsed?: string;
+      arrivedAt?: string;
+      completedAt?: string;
+      beforeKeys?: string[];
+      afterKeys?: string[];
+      invoiceUrl?: string;
+      warrantyText?: string;
+    }) => api.post(`/api/contractor/jobs/${jobId}/completion`, body),
+  });
+}
+
+// ---- Completion proof & sign-off ----
+export function useCompletion(jobId: string) {
+  return useQuery({
+    queryKey: ["completion", jobId],
+    queryFn: () => api.get<CompletionView | null>(`/api/jobs/${jobId}/completion`),
+  });
+}
+
+export function useConfirmCompletion(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<CompletionView>(`/api/jobs/${jobId}/confirm-completion`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["completion", jobId] });
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+    },
   });
 }
 

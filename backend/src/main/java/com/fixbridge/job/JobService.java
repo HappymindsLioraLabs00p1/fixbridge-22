@@ -5,6 +5,7 @@ import com.fixbridge.ai.AiAssessmentRepository;
 import com.fixbridge.ai.AiService;
 import com.fixbridge.ai.AssessmentResult;
 import com.fixbridge.common.enums.JobStatus;
+import com.fixbridge.common.enums.ProposalStatus;
 import com.fixbridge.common.enums.UserRole;
 import com.fixbridge.common.error.ApiException;
 import com.fixbridge.job.dto.JobDtos;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,11 +36,14 @@ public class JobService {
     private final JobStatusHistoryRepository statusHistory;
     private final JobMediaRepository jobMedia;
     private final com.fixbridge.storage.StorageService storage;
+    private final CompletionReportRepository completionReports;
+    private final ChangeOrderRepository changeOrders;
 
     public JobService(JobRepository jobs, PropertyRepository properties, AiService aiService,
                       AiAssessmentRepository assessments, PricingEngine pricingEngine,
                       JobPricingRepository jobPricing, JobStatusHistoryRepository statusHistory,
-                      JobMediaRepository jobMedia, com.fixbridge.storage.StorageService storage) {
+                      JobMediaRepository jobMedia, com.fixbridge.storage.StorageService storage,
+                      CompletionReportRepository completionReports, ChangeOrderRepository changeOrders) {
         this.jobs = jobs;
         this.properties = properties;
         this.aiService = aiService;
@@ -48,6 +53,8 @@ public class JobService {
         this.statusHistory = statusHistory;
         this.jobMedia = jobMedia;
         this.storage = storage;
+        this.completionReports = completionReports;
+        this.changeOrders = changeOrders;
     }
 
     /** Customer reports an issue → AI assessment → server-side retail estimate. */
@@ -114,6 +121,69 @@ public class JobService {
 
     public Job requireJob(UUID jobId) {
         return jobs.findById(jobId).orElseThrow(() -> ApiException.notFound("Job"));
+    }
+
+    /** The contractor's completion proof for a job, with photos as short-lived signed URLs. */
+    @Transactional(readOnly = true)
+    public JobDtos.CompletionView completionFor(AuthUser user, UUID jobId) {
+        Job job = requireJob(jobId);
+        if (!job.getCustomerId().equals(user.id()) && !user.hasRole(UserRole.admin)) {
+            throw ApiException.forbidden();
+        }
+        return completionReports.findFirstByJobIdOrderByCreatedAtDesc(jobId)
+                .map(this::toCompletionView)
+                .orElse(null);
+    }
+
+    /**
+     * Customer (or admin) signs off the completed work — FR-JOB-8. Payout stays blocked until this
+     * happens, and no change order may still be awaiting the customer's approval.
+     */
+    @Transactional
+    public JobDtos.CompletionView confirmCompletion(AuthUser user, UUID jobId) {
+        Job job = requireJob(jobId);
+        boolean isAdmin = user.hasRole(UserRole.admin);
+        if (!job.getCustomerId().equals(user.id()) && !isAdmin) {
+            throw ApiException.forbidden();
+        }
+        CompletionReport report = completionReports.findFirstByJobIdOrderByCreatedAtDesc(jobId)
+                .orElseThrow(() -> ApiException.conflict("The contractor has not submitted completion proof yet"));
+        if (report.isApproved()) {
+            return toCompletionView(report);
+        }
+        // FR-JOB-8: no unresolved change order may remain.
+        boolean unresolved = changeOrders.findByJobIdOrderByCreatedAtAsc(jobId).stream()
+                .anyMatch(co -> co.getStatus() == ProposalStatus.draft || co.getStatus() == ProposalStatus.sent);
+        if (unresolved) {
+            throw ApiException.conflict("Approve or decline the outstanding change order first");
+        }
+
+        report.setApprovedBy(user.id());
+        report.setApprovedAt(Instant.now());
+        completionReports.save(report);
+        transition(job, JobStatus.admin_review_pending, user.id());
+        return toCompletionView(report);
+    }
+
+    /** True once the customer or an admin has signed off the completion proof (payout gate). */
+    @Transactional(readOnly = true)
+    public boolean isCompletionApproved(UUID jobId) {
+        return completionReports.findFirstByJobIdOrderByCreatedAtDesc(jobId)
+                .map(CompletionReport::isApproved)
+                .orElse(false);
+    }
+
+    private JobDtos.CompletionView toCompletionView(CompletionReport r) {
+        return new JobDtos.CompletionView(
+                r.getId(), r.getSummary(), r.getMaterialsUsed(), r.getArrivedAt(), r.getCompletedAt(),
+                signed(r.getBeforeKeys()), signed(r.getAfterKeys()),
+                r.getInvoiceUrl(), r.getWarrantyText(), r.isApproved(), r.getApprovedAt());
+    }
+
+    private List<String> signed(String[] keys) {
+        if (keys == null) return List.of();
+        return java.util.Arrays.stream(keys).filter(k -> k != null && !k.isBlank())
+                .map(storage::createDownloadUrl).toList();
     }
 
     /** Records history and moves the job to a new status. */

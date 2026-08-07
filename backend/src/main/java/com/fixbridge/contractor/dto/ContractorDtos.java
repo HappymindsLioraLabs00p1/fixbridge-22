@@ -48,5 +48,15 @@ public final class ContractorDtos {
         }
     }
 
-    public record CompletionRequest(@NotBlank String summary, String materialsUsed) {}
+    /** Proof of completion (FR-JOB-7). Photos are storage object keys from the media upload flow. */
+    public record CompletionRequest(
+            @NotBlank String summary,
+            String materialsUsed,
+            java.time.Instant arrivedAt,
+            java.time.Instant completedAt,
+            java.util.List<String> beforeKeys,
+            java.util.List<String> afterKeys,
+            String invoiceUrl,
+            String warrantyText
+    ) {}
 }

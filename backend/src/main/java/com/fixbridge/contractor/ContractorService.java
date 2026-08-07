@@ -11,6 +11,7 @@ import com.fixbridge.config.FixBridgeProperties;
 import com.fixbridge.contractor.dto.ContractorDtos;
 import com.fixbridge.job.Bid;
 import com.fixbridge.job.BidRepository;
+import com.fixbridge.job.CompletionReport;
 import com.fixbridge.job.Job;
 import com.fixbridge.job.JobInvitation;
 import com.fixbridge.job.JobInvitationRepository;
@@ -35,12 +36,14 @@ public class ContractorService {
     private final AiAssessmentRepository assessments;
     private final StripeClient stripe;
     private final com.fixbridge.notification.NotificationService notifications;
+    private final com.fixbridge.job.CompletionReportRepository completionReports;
     private final FixBridgeProperties props;
 
     public ContractorService(ContractorRepository contractors, JobService jobService,
                              JobInvitationRepository invitations, BidRepository bids,
                              PropertyRepository properties, AiAssessmentRepository assessments,
                              StripeClient stripe, com.fixbridge.notification.NotificationService notifications,
+                             com.fixbridge.job.CompletionReportRepository completionReports,
                              FixBridgeProperties props) {
         this.contractors = contractors;
         this.jobService = jobService;
@@ -50,6 +53,7 @@ public class ContractorService {
         this.assessments = assessments;
         this.stripe = stripe;
         this.notifications = notifications;
+        this.completionReports = completionReports;
         this.props = props;
     }
 
@@ -133,8 +137,27 @@ public class ContractorService {
         if (!contractor.getId().equals(job.getAssignedContractorId())) {
             throw ApiException.forbidden();
         }
+
+        // Persist the proof itself (FR-JOB-7) — not just the status change.
+        CompletionReport report = new CompletionReport();
+        report.setJobId(jobId);
+        report.setSummary(req.summary());
+        report.setMaterialsUsed(req.materialsUsed());
+        report.setArrivedAt(req.arrivedAt());
+        report.setCompletedAt(req.completedAt() != null ? req.completedAt() : java.time.Instant.now());
+        report.setBeforeKeys(toArray(req.beforeKeys()));
+        report.setAfterKeys(toArray(req.afterKeys()));
+        report.setInvoiceUrl(req.invoiceUrl());
+        report.setWarrantyText(req.warrantyText());
+        completionReports.save(report);
+
         jobService.transition(job, JobStatus.work_completed, user.id());
+        jobService.transition(job, JobStatus.customer_review_pending, user.id());
         notifications.workCompleted(job.getCustomerId(), jobId);
+    }
+
+    private static String[] toArray(java.util.List<String> keys) {
+        return keys == null ? new String[0] : keys.toArray(String[]::new);
     }
 
     private Contractor requireContractor(AuthUser user) {

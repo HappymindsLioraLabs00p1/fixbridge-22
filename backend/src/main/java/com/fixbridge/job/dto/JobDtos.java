@@ -48,6 +48,21 @@ public final class JobDtos {
     /** A stored photo/video with a short-lived signed view URL. */
     public record MediaView(String mediaType, String url) {}
 
+    /** The contractor's proof of completion, as shown to the customer for sign-off (FR-JOB-7/8). */
+    public record CompletionView(
+            UUID id,
+            String summary,
+            String materialsUsed,
+            Instant arrivedAt,
+            Instant completedAt,
+            List<String> beforePhotoUrls,
+            List<String> afterPhotoUrls,
+            String invoiceUrl,
+            String warrantyText,
+            boolean approved,
+            Instant approvedAt
+    ) {}
+
     public record JobDetailView(
             UUID id,
             JobStatus status,

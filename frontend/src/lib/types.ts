@@ -183,6 +183,20 @@ export interface AdminProposal {
   status: string;
 }
 
+export interface CompletionView {
+  id: string;
+  summary: string | null;
+  materialsUsed: string | null;
+  arrivedAt: string | null;
+  completedAt: string | null;
+  beforePhotoUrls: string[];
+  afterPhotoUrls: string[];
+  invoiceUrl: string | null;
+  warrantyText: string | null;
+  approved: boolean;
+  approvedAt: string | null;
+}
+
 export interface ContractorOption {
   id: string;
   businessName: string;

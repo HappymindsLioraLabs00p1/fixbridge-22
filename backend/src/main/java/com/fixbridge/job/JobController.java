@@ -43,4 +43,16 @@ public class JobController {
         AuthUser user = SecurityUtil.currentUser();
         return jobService.getForCustomer(user, jobId);
     }
+
+    /** The contractor's completion proof, for the customer to review before signing off. */
+    @GetMapping("/{jobId}/completion")
+    public JobDtos.CompletionView completion(@PathVariable UUID jobId) {
+        return jobService.completionFor(SecurityUtil.currentUser(), jobId);
+    }
+
+    /** Customer signs off the completed work — payout stays blocked until this happens. */
+    @PostMapping("/{jobId}/confirm-completion")
+    public JobDtos.CompletionView confirmCompletion(@PathVariable UUID jobId) {
+        return jobService.confirmCompletion(SecurityUtil.currentUser(), jobId);
+    }
 }

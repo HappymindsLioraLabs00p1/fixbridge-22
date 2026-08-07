@@ -131,8 +131,14 @@ public class PaymentService {
     @Transactional
     public PaymentDtos.PayoutView releasePayout(AuthUser admin, UUID jobId) {
         Job job = jobService.requireJob(jobId);
-        if (job.getStatus() != JobStatus.work_completed && job.getStatus() != JobStatus.admin_review_pending) {
+        if (job.getStatus() != JobStatus.work_completed && job.getStatus() != JobStatus.admin_review_pending
+                && job.getStatus() != JobStatus.customer_review_pending) {
             throw ApiException.conflict("Payout can only be released after work is completed and approved");
+        }
+        // FR-JOB-8 / FR-PAY-4: the completion proof must be signed off before any money moves.
+        if (!jobService.isCompletionApproved(jobId)) {
+            throw ApiException.conflict(
+                    "Completion has not been confirmed yet — the customer or an admin must approve the work first");
         }
         if (job.getAssignedContractorId() == null) {
             throw ApiException.conflict("No contractor is assigned to this job");

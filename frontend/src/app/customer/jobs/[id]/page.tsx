@@ -3,10 +3,13 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
+import { ApiError } from "@/lib/api";
 import {
   useApproveChangeOrder,
   useApproveProposal,
   useChangeOrders,
+  useCompletion,
+  useConfirmCompletion,
   useDispatchCheckout,
   useJob,
   useProposals,
@@ -154,10 +157,103 @@ export default function JobDetailPage() {
             )}
 
             <ChangeOrdersCard jobId={jobId} />
+            <CompletionCard jobId={jobId} />
           </>
         )}
       </div>
     </RequireRole>
+  );
+}
+
+function CompletionCard({ jobId }: { jobId: string }) {
+  const { data: completion } = useCompletion(jobId);
+  const confirm = useConfirmCompletion(jobId);
+  if (!completion) return null;
+
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Work completed</CardTitle>
+        <CardDescription>
+          {completion.approved
+            ? "You've confirmed this work. The contractor can now be paid."
+            : "Review the photos and details, then confirm so we can release the contractor's payment."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm">{completion.summary}</p>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-md border p-3">
+            <p className="text-muted-foreground">Arrived</p>
+            <p className="font-medium">{when(completion.arrivedAt)}</p>
+          </div>
+          <div className="rounded-md border p-3">
+            <p className="text-muted-foreground">Completed</p>
+            <p className="font-medium">{when(completion.completedAt)}</p>
+          </div>
+        </div>
+
+        {(completion.beforePhotoUrls.length > 0 || completion.afterPhotoUrls.length > 0) && (
+          <div className="grid grid-cols-2 gap-4">
+            <PhotoSet label="Before" urls={completion.beforePhotoUrls} />
+            <PhotoSet label="After" urls={completion.afterPhotoUrls} />
+          </div>
+        )}
+
+        {completion.materialsUsed && (
+          <p className="text-sm">
+            <span className="text-muted-foreground">Materials: </span>
+            {completion.materialsUsed}
+          </p>
+        )}
+        {completion.warrantyText && (
+          <p className="text-sm">
+            <span className="text-muted-foreground">Warranty: </span>
+            {completion.warrantyText}
+          </p>
+        )}
+        {completion.invoiceUrl && (
+          <a href={completion.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+            View invoice ↗
+          </a>
+        )}
+
+        {completion.approved ? (
+          <p className="text-sm font-medium text-[var(--success)]">
+            Confirmed {when(completion.approvedAt)} ✓
+          </p>
+        ) : (
+          <div className="space-y-2 border-t pt-4">
+            <Button disabled={confirm.isPending} onClick={() => confirm.mutate()}>
+              {confirm.isPending ? "Confirming…" : "Confirm work is complete"}
+            </Button>
+            {confirm.isError && (
+              <p className="text-sm text-destructive">
+                {(confirm.error as ApiError)?.message ?? "Could not confirm. Please try again."}
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PhotoSet({ label, urls }: { label: string; urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div>
+      <p className="mb-1.5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{label}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {urls.map((u, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} src={u} alt={`${label} ${i + 1}`} className="aspect-square w-full rounded-md border object-cover" />
+        ))}
+      </div>
+    </div>
   );
 }
 
