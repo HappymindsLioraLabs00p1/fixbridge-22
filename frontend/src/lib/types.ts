@@ -183,6 +183,23 @@ export interface AdminProposal {
   status: string;
 }
 
+export interface PaymentView {
+  id: string;
+  type: string;
+  status: string;
+  amountCents: number;
+  refundedCents: number;
+  refundableCents: number;
+  disputed: boolean;
+  createdAt: string;
+}
+
+export interface PayoutHoldView {
+  jobId: string;
+  held: boolean;
+  reason: string | null;
+}
+
 export interface CompletionView {
   id: string;
   summary: string | null;

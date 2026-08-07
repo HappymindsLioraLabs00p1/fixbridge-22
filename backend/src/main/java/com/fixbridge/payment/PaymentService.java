@@ -38,12 +38,15 @@ public class PaymentService {
     private final StripeClient stripe;
     private final JobService jobService;
     private final com.fixbridge.notification.NotificationService notifications;
+    private final RefundRepository refunds;
+    private final DisputeRepository disputeRepository;
     private final com.fixbridge.audit.AuditService audit;
 
     public PaymentService(PaymentRepository payments, DispatchFeeRepository dispatchFees,
                           ProposalRepository proposals, BidRepository bids, ContractorRepository contractors,
                           TransferRepository transfers, StripeClient stripe, JobService jobService,
                           com.fixbridge.notification.NotificationService notifications,
+                          RefundRepository refunds, DisputeRepository disputeRepository,
                           com.fixbridge.audit.AuditService audit) {
         this.payments = payments;
         this.dispatchFees = dispatchFees;
@@ -54,6 +57,8 @@ public class PaymentService {
         this.stripe = stripe;
         this.jobService = jobService;
         this.notifications = notifications;
+        this.refunds = refunds;
+        this.disputeRepository = disputeRepository;
         this.audit = audit;
     }
 
@@ -124,6 +129,104 @@ public class PaymentService {
         }
     }
 
+    // ---- Refunds, disputes and payout holds (FR-PAY-9, FR-ADMIN-4) ----
+
+    /** Payments recorded against a job, with how much has already been refunded. Admin only. */
+    @Transactional(readOnly = true)
+    public java.util.List<PaymentDtos.PaymentView> paymentsForJob(UUID jobId) {
+        return payments.findByJobId(jobId).stream().map(p -> {
+            long refunded = refunds.findByPaymentId(p.getId()).stream().mapToLong(Refund::getAmountCents).sum();
+            boolean disputed = !disputeRepository.findByPaymentId(p.getId()).isEmpty();
+            return new PaymentDtos.PaymentView(
+                    p.getId(), p.getType().name(), p.getStatus().name(), p.getAmountCents(),
+                    refunded, Math.max(0, p.getAmountCents() - refunded), disputed, p.getCreatedAt());
+        }).toList();
+    }
+
+    /**
+     * Refund a succeeded payment, in full or part. The refundable amount is computed server-side from
+     * what has already been refunded — a client-supplied figure is never trusted.
+     */
+    @Transactional
+    public PaymentDtos.RefundView refund(AuthUser admin, UUID paymentId, long amountCents, String reason) {
+        Payment payment = payments.findById(paymentId).orElseThrow(() -> ApiException.notFound("Payment"));
+        if (payment.getStatus() != PaymentStatus.succeeded && payment.getStatus() != PaymentStatus.refunded) {
+            throw ApiException.conflict("Only a succeeded payment can be refunded");
+        }
+        long alreadyRefunded = refunds.findByPaymentId(paymentId).stream().mapToLong(Refund::getAmountCents).sum();
+        long refundable = payment.getAmountCents() - alreadyRefunded;
+        if (refundable <= 0) {
+            throw ApiException.conflict("This payment has already been fully refunded");
+        }
+        if (amountCents > refundable) {
+            throw ApiException.badRequest("Refund exceeds the refundable amount of "
+                    + (refundable / 100.0) + " for this payment");
+        }
+
+        String stripeRefundId = stripe.createRefund(payment.getStripePaymentIntent(), amountCents, reason);
+
+        Refund refund = new Refund();
+        refund.setPaymentId(paymentId);
+        refund.setAmountCents(amountCents);
+        refund.setReason(reason);
+        refund.setStripeRefundId(stripeRefundId);
+        refunds.save(refund);
+
+        // Fully refunded → mark the payment (and the job) as refunded.
+        if (alreadyRefunded + amountCents >= payment.getAmountCents()) {
+            payment.setStatus(PaymentStatus.refunded);
+            payments.save(payment);
+            if (payment.getJobId() != null) {
+                jobService.transition(jobService.requireJob(payment.getJobId()), JobStatus.refunded, admin.id());
+            }
+        }
+
+        audit.record(admin.id(), "payment.refund", "payment", paymentId,
+                java.util.Map.of("amountCents", amountCents, "reason", reason == null ? "" : reason,
+                        "stripeRefundId", stripeRefundId));
+        return new PaymentDtos.RefundView(refund.getId(), paymentId, amountCents, reason, refund.getCreatedAt());
+    }
+
+    /** Record a chargeback from Stripe's webhook and flag the job as disputed. */
+    @Transactional
+    public void recordDispute(String stripeDisputeId, String paymentIntentId, Long amountCents, String status) {
+        if (stripeDisputeId != null && disputeRepository.findByStripeDisputeId(stripeDisputeId).isPresent()) {
+            return; // idempotent
+        }
+        Payment payment = paymentIntentId == null ? null
+                : payments.findByStripePaymentIntent(paymentIntentId).orElse(null);
+        if (payment == null) {
+            log.warn("Dispute {} for unknown payment intent {}", stripeDisputeId, paymentIntentId);
+            return;
+        }
+        Dispute dispute = new Dispute();
+        dispute.setPaymentId(payment.getId());
+        dispute.setStripeDisputeId(stripeDisputeId);
+        dispute.setAmountCents(amountCents);
+        dispute.setStatus(status);
+        disputeRepository.save(dispute);
+
+        payment.setStatus(PaymentStatus.disputed);
+        payments.save(payment);
+        if (payment.getJobId() != null) {
+            Job job = jobService.requireJob(payment.getJobId());
+            // A dispute automatically holds any contractor payout until an admin resolves it.
+            job.setPayoutHoldReason("Payment disputed by the customer's bank");
+            jobService.transition(job, JobStatus.disputed, null);
+        }
+    }
+
+    /** Admin places or lifts a hold on a job's contractor payout. */
+    @Transactional
+    public PaymentDtos.PayoutHoldView setPayoutHold(AuthUser admin, UUID jobId, String reason) {
+        Job job = jobService.requireJob(jobId);
+        job.setPayoutHoldReason(reason);
+        jobService.save(job);
+        audit.record(admin.id(), reason == null ? "payout.hold_released" : "payout.hold", "job", jobId,
+                java.util.Map.of("reason", reason == null ? "" : reason));
+        return new PaymentDtos.PayoutHoldView(jobId, reason != null, reason);
+    }
+
     /**
      * Admin releases the contractor payout AFTER completion is approved — separate charges & transfers.
      * Funds are transferred only now, not at customer charge time.
@@ -139,6 +242,10 @@ public class PaymentService {
         if (!jobService.isCompletionApproved(jobId)) {
             throw ApiException.conflict(
                     "Completion has not been confirmed yet — the customer or an admin must approve the work first");
+        }
+        // FR-PAY-9: an admin hold (or an open dispute) blocks the payout.
+        if (job.getPayoutHoldReason() != null) {
+            throw ApiException.conflict("Payout is on hold: " + job.getPayoutHoldReason());
         }
         if (job.getAssignedContractorId() == null) {
             throw ApiException.conflict("No contractor is assigned to this job");

@@ -9,8 +9,11 @@ import {
   useCreateProposal,
   useDispatchQueue,
   useInviteContractor,
+  useJobPayments,
   usePublishChangeOrder,
+  useRefundPayment,
   useReleasePayout,
+  useSetPayoutHold,
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,8 +158,101 @@ function AdminJobCard({ job }: { job: AdminJob }) {
         </div>
 
         <AdminChangeOrders jobId={job.jobId} />
+        <AdminMoneyControls jobId={job.jobId} />
       </CardContent>
     </Card>
+  );
+}
+
+function AdminMoneyControls({ jobId }: { jobId: string }) {
+  const { data: payments } = useJobPayments(jobId);
+  const refund = useRefundPayment(jobId);
+  const hold = useSetPayoutHold(jobId);
+  const [target, setTarget] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [reason, setReason] = useState("");
+  const [holdReason, setHoldReason] = useState("");
+
+  if (!payments || payments.length === 0) return null;
+  const selected = payments.find((p) => p.id === target);
+
+  return (
+    <div className="space-y-3 border-t pt-4">
+      <p className="text-sm font-medium">Payments &amp; refunds</p>
+
+      {payments.map((p) => (
+        <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+          <span className="capitalize">{p.type.replaceAll("_", " ")}</span>
+          <span className="text-muted-foreground">
+            {formatCents(p.amountCents)}
+            {p.refundedCents > 0 && <> · refunded {formatCents(p.refundedCents)}</>}
+            {" · "}refundable <span className="font-medium">{formatCents(p.refundableCents)}</span>
+          </span>
+          <span className="flex items-center gap-2">
+            {p.disputed && <span className="rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">disputed</span>}
+            <span className="capitalize text-muted-foreground">{p.status}</span>
+          </span>
+        </div>
+      ))}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* Refund */}
+        <div className="space-y-1.5 rounded-md border p-3">
+          <Label className="text-xs">Refund a payment</Label>
+          <Select value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Select a payment…</option>
+            {payments
+              .filter((p) => p.refundableCents > 0)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.type.replaceAll("_", " ")} — up to {formatCents(p.refundableCents)}
+                </option>
+              ))}
+          </Select>
+          <Input
+            type="number"
+            min={1}
+            placeholder="amount ($)"
+            value={amount || ""}
+            onChange={(e) => setAmount(+e.target.value)}
+          />
+          <Input placeholder="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={refund.isPending || !target || amount <= 0}
+            onClick={() => refund.mutate({ paymentId: target, amountCents: Math.round(amount * 100), reason })}
+          >
+            {refund.isPending ? "Refunding…" : "Issue refund"}
+          </Button>
+          {selected && amount * 100 > selected.refundableCents && (
+            <p className="text-xs text-destructive">Exceeds refundable {formatCents(selected.refundableCents)}</p>
+          )}
+          {refund.isSuccess && <p className="text-xs text-[var(--success)]">Refund issued ✓</p>}
+          {refund.isError && <p className="text-xs text-destructive">{(refund.error as Error)?.message}</p>}
+        </div>
+
+        {/* Payout hold */}
+        <div className="space-y-1.5 rounded-md border p-3">
+          <Label className="text-xs">Payout hold</Label>
+          <p className="text-xs text-muted-foreground">Blocks the contractor payout until lifted.</p>
+          <Input placeholder="reason for hold" value={holdReason} onChange={(e) => setHoldReason(e.target.value)} />
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" disabled={hold.isPending || !holdReason} onClick={() => hold.mutate(holdReason)}>
+              Hold payout
+            </Button>
+            <Button size="sm" variant="ghost" disabled={hold.isPending} onClick={() => hold.mutate(null)}>
+              Lift hold
+            </Button>
+          </div>
+          {hold.data && (
+            <p className="text-xs text-muted-foreground">
+              {hold.data.held ? `On hold: ${hold.data.reason}` : "No hold in place"}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

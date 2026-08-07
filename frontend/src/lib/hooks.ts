@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, apiFetch } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import type {
   AdminChangeOrder,
@@ -18,6 +18,8 @@ import type {
   JobDetail,
   JobSummary,
   NotificationItem,
+  PaymentView,
+  PayoutHoldView,
   PlanView,
   Property,
   SubscriptionView,
@@ -219,6 +221,37 @@ export function useReleasePayout(jobId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post(`/api/admin/jobs/${jobId}/payout`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-queue"] }),
+  });
+}
+
+// ---- Admin money controls: refunds, disputes, payout holds ----
+export function useJobPayments(jobId: string) {
+  return useQuery({
+    queryKey: ["admin-payments", jobId],
+    queryFn: () => api.get<PaymentView[]>(`/api/admin/jobs/${jobId}/payments`),
+  });
+}
+
+export function useRefundPayment(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { paymentId: string; amountCents: number; reason?: string }) =>
+      api.post(`/api/admin/payments/${v.paymentId}/refund`, {
+        amountCents: v.amountCents,
+        reason: v.reason,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-payments", jobId] }),
+  });
+}
+
+export function useSetPayoutHold(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reason: string | null) =>
+      reason
+        ? api.post<PayoutHoldView>(`/api/admin/jobs/${jobId}/payout-hold`, { reason })
+        : apiFetch<PayoutHoldView>(`/api/admin/jobs/${jobId}/payout-hold`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-queue"] }),
   });
 }

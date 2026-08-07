@@ -35,6 +35,11 @@ public class StubStripeClient implements StripeClient {
     }
 
     @Override
+    public String createRefund(String paymentIntentId, long amountCents, String reason) {
+        return "re_stub_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    @Override
     public CheckoutSession createSubscriptionCheckout(String customerEmail, String priceId, String referenceId) {
         String session = "cs_sub_stub_" + UUID.randomUUID().toString().replace("-", "");
         return new CheckoutSession(session, "https://stub.checkout.local/subscribe/" + session);

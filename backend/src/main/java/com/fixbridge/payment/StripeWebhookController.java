@@ -73,8 +73,12 @@ public class StripeWebhookController {
             case "invoice.payment_failed" ->
                     subscriptions.updateStatusBySubscriptionId(event.subscriptionId(), "past_due");
             case "payment_intent.succeeded" -> log.info("payment_intent.succeeded {}", event.objectId());
+            // A chargeback: record it and automatically hold the contractor payout.
+            case "charge.dispute.created" ->
+                    paymentService.recordDispute(event.objectId(), event.paymentIntentId(),
+                            event.amountCents(), "open");
             case "account.updated", "transfer.created", "transfer.reversed",
-                 "payout.paid", "payout.failed", "charge.refunded", "charge.dispute.created" ->
+                 "payout.paid", "payout.failed", "charge.refunded" ->
                     log.info("Recorded Stripe event {} ({})", event.type(), event.objectId());
             default -> log.info("Unhandled Stripe event type {}", event.type());
         }
@@ -84,7 +88,8 @@ public class StripeWebhookController {
         return ResponseEntity.ok("ok");
     }
 
-    private record StripeEvent(String id, String type, String objectId, String subscriptionId) {}
+    private record StripeEvent(String id, String type, String objectId, String subscriptionId,
+                               String paymentIntentId, Long amountCents) {}
 
     private StripeEvent parseAndVerify(String rawBody, String signature) throws Exception {
         boolean stub = props.ai().stubMode() || props.stripe().webhookSecret() == null
@@ -95,7 +100,9 @@ public class StripeWebhookController {
                     rawBody, signature, props.stripe().webhookSecret());
             JsonNode object = objectMapper.readTree(rawBody).path("data").path("object");
             return new StripeEvent(event.getId(), event.getType(),
-                    object.path("id").asText(null), object.path("subscription").asText(null));
+                    object.path("id").asText(null), object.path("subscription").asText(null),
+                    object.path("payment_intent").asText(null),
+                    object.has("amount") ? object.path("amount").asLong() : null);
         }
         // Stub: trust the local body { "id", "type", "data": { "object": { "id", "subscription" } } }.
         JsonNode root = objectMapper.readTree(rawBody);
@@ -105,6 +112,8 @@ public class StripeWebhookController {
         if (id == null || type == null) {
             throw new IllegalArgumentException("Missing id/type in stub event");
         }
-        return new StripeEvent(id, type, object.path("id").asText(null), object.path("subscription").asText(null));
+        return new StripeEvent(id, type, object.path("id").asText(null), object.path("subscription").asText(null),
+                object.path("payment_intent").asText(null),
+                object.has("amount") ? object.path("amount").asLong() : null);
     }
 }

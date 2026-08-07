@@ -79,6 +79,21 @@ public class LiveStripeClient implements StripeClient {
     }
 
     @Override
+    public String createRefund(String paymentIntentId, long amountCents, String reason) {
+        try {
+            com.stripe.model.Refund refund = com.stripe.model.Refund.create(
+                    com.stripe.param.RefundCreateParams.builder()
+                            .setPaymentIntent(paymentIntentId)
+                            .setAmount(amountCents)
+                            .putMetadata("reason", reason == null ? "" : reason)
+                            .build());
+            return refund.getId();
+        } catch (StripeException e) {
+            throw paymentError("create refund", e);
+        }
+    }
+
+    @Override
     public CheckoutSession createSubscriptionCheckout(String customerEmail, String priceId, String referenceId) {
         try {
             SessionCreateParams params = SessionCreateParams.builder()

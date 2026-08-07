@@ -56,6 +56,10 @@ public class Job {
     @Column(name = "assigned_contractor_id")
     private UUID assignedContractorId;
 
+    /** Set by an admin to block the contractor payout (dispute, quality or compliance issue). */
+    @Column(name = "payout_hold_reason", columnDefinition = "text")
+    private String payoutHoldReason;
+
     // Lightweight referral / property-opportunity fields
     @Column(name = "partner_code")
     private String partnerCode;

@@ -25,4 +25,7 @@ public interface StripeClient {
 
     /** Create a Checkout session in subscription mode for a recurring Price. */
     CheckoutSession createSubscriptionCheckout(String customerEmail, String priceId, String referenceId);
+
+    /** Refund a captured payment (full or partial). Returns the refund id. */
+    String createRefund(String paymentIntentId, long amountCents, String reason);
 }

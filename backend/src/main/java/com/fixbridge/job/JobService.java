@@ -123,6 +123,12 @@ public class JobService {
         return jobs.findById(jobId).orElseThrow(() -> ApiException.notFound("Job"));
     }
 
+    /** Persist a job mutated by another service (e.g. a payout hold). */
+    @Transactional
+    public Job save(Job job) {
+        return jobs.save(job);
+    }
+
     /** The contractor's completion proof for a job, with photos as short-lived signed URLs. */
     @Transactional(readOnly = true)
     public JobDtos.CompletionView completionFor(AuthUser user, UUID jobId) {
