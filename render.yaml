@@ -13,10 +13,9 @@ databases:
     plan: free
 
 services:
-  - type: redis
-    name: fixbridge-redis
-    plan: free
-    ipAllowList: []          # internal access only
+  # No Redis service on purpose. It is only a cache here — the app runs correctly without it (the
+  # health check deliberately ignores it), and free Redis is not dependable across providers. Add one
+  # later and set REDIS_HOST/REDIS_PORT if caching becomes worth it.
 
   - type: web
     name: fixbridge-backend
@@ -49,18 +48,6 @@ services:
         fromDatabase:
           name: fixbridge-postgres
           property: password
-
-      # --- Redis ----------------------------------------------------------------------------
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: fixbridge-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: fixbridge-redis
-          property: port
 
       # --- Security -------------------------------------------------------------------------
       - key: JWT_SECRET

@@ -1,0 +1,289 @@
+<title>FixBridge — Hosting options &amp; cost</title>
+<style>
+  :root {
+    --navy: #0b2447;
+    --coral: #ff4d1c;
+    --ground: #f7f5f1;
+    --card: #ffffff;
+    --ink: #14181f;
+    --muted: #6b6560;
+    --line: #e3ddd3;
+    --free: #157a4a;
+    --warn: #b45309;
+    --cost: #8a2d2d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0b0f16; --card: #141c27; --ink: #e9ecf1; --muted: #96a0ad;
+      --line: #253243; --free: #4ade80; --warn: #fbbf24; --cost: #f87171; --navy: #dce6f5;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0b0f16; --card: #141c27; --ink: #e9ecf1; --muted: #96a0ad;
+    --line: #253243; --free: #4ade80; --warn: #fbbf24; --cost: #f87171; --navy: #dce6f5;
+  }
+  :root[data-theme="light"] {
+    --ground: #f7f5f1; --card: #ffffff; --ink: #14181f; --muted: #6b6560;
+    --line: #e3ddd3; --free: #157a4a; --warn: #b45309; --cost: #8a2d2d; --navy: #0b2447;
+  }
+
+  * { box-sizing: border-box; }
+  .page {
+    background: var(--ground); color: var(--ink); padding: 40px 24px 64px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 34px; }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase;
+    color: var(--coral); margin: 0 0 8px;
+  }
+  h1 {
+    margin: 0; font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -0.02em;
+    font-weight: 800; text-wrap: balance;
+  }
+  .sub { margin: 10px 0 0; color: var(--muted); max-width: 62ch; }
+
+  /* Recommendation band */
+  .rec {
+    background: var(--navy); color: #fff; border-radius: 14px; padding: 22px 24px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  :root[data-theme="dark"] .rec, .rec { color: #fff; }
+  @media (prefers-color-scheme: dark) { .rec { background: #16233a; } }
+  :root[data-theme="dark"] .rec { background: #16233a; }
+  :root[data-theme="light"] .rec { background: #0b2447; }
+  .rec h2 { margin: 0; font-size: 13px; letter-spacing: 1.6px; text-transform: uppercase; color: #ffb9a3; font-weight: 700; }
+  .rec-row { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .rec-item { border-left: 3px solid var(--coral); padding-left: 14px; }
+  .rec-item .when { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #9fb3d0; }
+  .rec-item .what { font-size: 19px; font-weight: 700; margin-top: 3px; }
+  .rec-item .why { font-size: 13.5px; color: #c8d6e8; margin-top: 4px; }
+
+  h3 { margin: 0 0 12px; font-size: 19px; font-weight: 750; letter-spacing: -0.01em; }
+  .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 14px; }
+  thead th {
+    text-align: left; padding: 12px 14px; font-size: 11px; letter-spacing: 1.1px;
+    text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); font-weight: 700;
+    background: var(--card); position: sticky; top: 0;
+  }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  .plat { font-weight: 650; }
+  .plat small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 650; }
+  .free { color: var(--free); }
+  .cost { color: var(--cost); }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.3px; white-space: nowrap;
+  }
+  .pill.no { background: color-mix(in srgb, var(--free) 15%, transparent); color: var(--free); }
+  .pill.yes { background: color-mix(in srgb, var(--cost) 14%, transparent); color: var(--cost); }
+  .pill.maybe { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .best { box-shadow: inset 3px 0 0 var(--coral); }
+
+  .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+  .card p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .card .price { font-size: 22px; font-weight: 750; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+
+  .callout {
+    border-left: 3px solid var(--coral); background: var(--card); border-radius: 0 10px 10px 0;
+    padding: 14px 18px; font-size: 14px;
+  }
+  .callout strong { color: var(--ink); }
+  footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+  footer a { color: var(--coral); }
+</style>
+
+<div class="page">
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">FixBridge · backend hosting</p>
+    <h1>What it costs to stop running the backend on your laptop</h1>
+    <p class="sub">
+      The frontend already lives on Netlify for free. This is only about the Java/Spring backend and
+      its Postgres database. Figures are realistic monthly estimates for <em>our</em> workload — one
+      small container (512&nbsp;MB–1&nbsp;GB) plus a small database at demo traffic.
+    </p>
+  </header>
+
+  <section class="rec">
+    <h2>Recommendation</h2>
+    <div class="rec-row">
+      <div class="rec-item">
+        <div class="when">Right now — demo</div>
+        <div class="what">Render free + Neon free</div>
+        <div class="why">$0/mo, no credit card. The blueprint is already in your repo.</div>
+      </div>
+      <div class="rec-item">
+        <div class="when">When clients are watching</div>
+        <div class="what">Render paid</div>
+        <div class="why">~$14/mo. Removes the cold start so the demo never stalls.</div>
+      </div>
+      <div class="rec-item">
+        <div class="when">Real traffic later</div>
+        <div class="what">GCP Cloud Run + Cloud SQL</div>
+        <div class="why">Scales to zero, and the Terraform is already written.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Free tiers — what you can use with no money</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Platform</th><th>Card required?</th><th>What you get free</th><th>Catch</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best">
+            <td class="plat">Render <small>app + database</small></td>
+            <td><span class="pill no">No card</span></td>
+            <td>Web service, PostgreSQL, static site</td>
+            <td>Sleeps after ~15 min idle → 30–60 s cold start</td>
+          </tr>
+          <tr class="best">
+            <td class="plat">Neon / Supabase <small>database only</small></td>
+            <td><span class="pill no">No card</span></td>
+            <td>~0.5 GB Postgres, free indefinitely</td>
+            <td>Database only — still need somewhere to run the app</td>
+          </tr>
+          <tr>
+            <td class="plat">Koyeb</td>
+            <td><span class="pill maybe">Usually not</span></td>
+            <td>1 instance · 512 MB RAM · 0.1 vCPU</td>
+            <td>Some regions demand a card; one service only</td>
+          </tr>
+          <tr>
+            <td class="plat">Google Cloud Run</td>
+            <td><span class="pill yes">Yes</span></td>
+            <td>2 M requests/mo — genuinely generous</td>
+            <td>Billing account required even to touch the free tier</td>
+          </tr>
+          <tr>
+            <td class="plat">Oracle Cloud</td>
+            <td><span class="pill yes">Yes</span></td>
+            <td>Always-free ARM VMs (4 cores / 24 GB)</td>
+            <td>Most generous free tier anywhere, but you manage the whole VM</td>
+          </tr>
+          <tr>
+            <td class="plat">Railway</td>
+            <td><span class="pill maybe">After credit</span></td>
+            <td>$5 credit per month</td>
+            <td>Our workload eats the credit; effectively paid</td>
+          </tr>
+          <tr>
+            <td class="plat">Fly.io</td>
+            <td><span class="pill yes">Yes</span></td>
+            <td>— no free tier for new signups</td>
+            <td>Pay-as-you-go only since the plan change</td>
+          </tr>
+          <tr>
+            <td class="plat">AWS</td>
+            <td><span class="pill yes">Yes</span></td>
+            <td>12-month trial credits</td>
+            <td>App Runner can't scale to zero — costs run even when idle</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      “No card” is the deciding column for you — you said GCP and AWS aren’t paid up, and both
+      require billing details before anything runs.
+    </p>
+  </section>
+
+  <section>
+    <h3>Paid — realistic monthly cost for this app</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Stack</th><th>App</th><th>Database</th><th>Total / month</th><th>Worth it when</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best">
+            <td class="plat">Render</td>
+            <td class="num">~$7</td>
+            <td class="num">~$7</td>
+            <td class="num free">~$14</td>
+            <td>Cheapest always-warm option; no infra work</td>
+          </tr>
+          <tr>
+            <td class="plat">GCP <small>Cloud Run + Cloud SQL</small></td>
+            <td class="num">~$1–5</td>
+            <td class="num">~$9–10</td>
+            <td class="num">~$10–15</td>
+            <td>Scales to zero; Terraform already written</td>
+          </tr>
+          <tr>
+            <td class="plat">DigitalOcean <small>App Platform</small></td>
+            <td class="num">~$5</td>
+            <td class="num">~$15</td>
+            <td class="num">~$20</td>
+            <td>Predictable flat pricing, simple dashboard</td>
+          </tr>
+          <tr>
+            <td class="plat">AWS <small>App Runner + RDS</small></td>
+            <td class="num">~$18–25</td>
+            <td class="num">~$15</td>
+            <td class="num cost">~$33–40</td>
+            <td>Only if you're already committed to AWS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      Estimates for a small always-on service in a US region, August 2026. Real bills move with
+      region, traffic and storage — confirm on the provider's calculator before committing.
+    </p>
+  </section>
+
+  <section>
+    <h3>The cheapest sensible combinations</h3>
+    <div class="cards">
+      <div class="card">
+        <h4>Demo today</h4>
+        <div class="price free">$0</div>
+        <p>Render free web service + Neon free Postgres. No card anywhere. Accepts a cold start on the first request.</p>
+      </div>
+      <div class="card">
+        <h4>Client-ready</h4>
+        <div class="price">~$7</div>
+        <p>Render paid web service + Neon free Postgres. Always warm, database still free.</p>
+      </div>
+      <div class="card">
+        <h4>Production</h4>
+        <div class="price">~$14–15</div>
+        <p>Render paid, or Cloud Run + Cloud SQL once you have a GCP billing account.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="callout">
+    <strong>Why AWS and GCP are the wrong answer right now:</strong> both require a billing account
+    with a card before you can deploy anything — including their free tiers. That's the exact
+    constraint you described. Render needs no card, costs nothing to start, and its blueprint is
+    already committed to your repo. You can move to Cloud Run later without changing a line of
+    application code: it's the same Docker image.
+  </section>
+
+  <footer>
+    Sources ·
+    <a href="https://render.com/articles/platforms-with-a-real-free-tier-for-developers-in-2026">Real free tiers 2026</a> ·
+    <a href="https://www.srvrlss.io/provider/koyeb/">Koyeb free tier</a> ·
+    <a href="https://cloud.google.com/run/pricing">Cloud Run pricing</a> ·
+    <a href="https://aws.amazon.com/apprunner/pricing/">App Runner pricing</a> ·
+    <a href="https://www.cloudzero.com/blog/rds-pricing/">RDS pricing</a> ·
+    <a href="https://selfhost.dev/blog/managed-postgresql-comparison-2026/">Managed Postgres comparison</a>
+  </footer>
+
+</div>
+</div>
