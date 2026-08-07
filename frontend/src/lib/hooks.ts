@@ -191,6 +191,39 @@ export function useSubmitDocument() {
   });
 }
 
+// ---- Admin: contractor compliance review ----
+export function useContractorCompliance(contractorId: string | null) {
+  return useQuery({
+    queryKey: ["admin-compliance", contractorId],
+    queryFn: () => api.get<ComplianceStatus>(`/api/admin/contractors/${contractorId}/compliance`),
+    enabled: !!contractorId,
+  });
+}
+
+export function useReviewDocument(contractorId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { documentId: string; approve: boolean; note?: string }) =>
+      api.post(`/api/admin/documents/${v.documentId}/review`, { approve: v.approve, note: v.note }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-compliance", contractorId] });
+      qc.invalidateQueries({ queryKey: ["admin-contractors"] });
+    },
+  });
+}
+
+export function useSetSuspension(contractorId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { suspended: boolean; reason?: string }) =>
+      api.post(`/api/admin/contractors/${contractorId}/suspension`, v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-compliance", contractorId] });
+      qc.invalidateQueries({ queryKey: ["admin-contractors"] });
+    },
+  });
+}
+
 // ---- Admin ----
 export function useDispatchQueue() {
   return useQuery({

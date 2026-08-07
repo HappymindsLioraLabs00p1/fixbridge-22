@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
 import {
@@ -29,11 +30,18 @@ export default function AdminDashboard() {
   return (
     <RequireRole role="admin">
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-        <div>
-          <h1 className="text-2xl font-bold">Dispatch console</h1>
-          <p className="text-sm text-muted-foreground">
-            You are the only role that sees both the contractor net and the customer retail — and the margin.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Dispatch console</h1>
+            <p className="text-sm text-muted-foreground">
+              You are the only role that sees both the contractor net and the customer retail — and the margin.
+            </p>
+          </div>
+          <Link href="/admin/compliance">
+            <Button variant="outline" size="sm">
+              Contractor compliance
+            </Button>
+          </Link>
         </div>
 
         {isLoading ? (
