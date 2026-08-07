@@ -22,17 +22,22 @@ public class AuthService {
     private static final Set<UserRole> SELF_REGISTERABLE =
             Set.of(UserRole.customer, UserRole.contractor, UserRole.landlord, UserRole.agent);
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthService.class);
+
     private final ProfileRepository profiles;
     private final UserRoleRepository roles;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthTokenService authTokenService;
 
     public AuthService(ProfileRepository profiles, UserRoleRepository roles,
-                       PasswordEncoder passwordEncoder, JwtService jwtService) {
+                       PasswordEncoder passwordEncoder, JwtService jwtService,
+                       AuthTokenService authTokenService) {
         this.profiles = profiles;
         this.roles = roles;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.authTokenService = authTokenService;
     }
 
     @Transactional
@@ -52,6 +57,14 @@ public class AuthService {
         profile = profiles.save(profile);
 
         roles.save(new UserRoleEntity(profile.getId(), role));
+
+        // Send the confirmation link. A delivery failure must never block sign-up — the account is
+        // already usable, and the link can be re-requested.
+        try {
+            authTokenService.sendVerificationEmail(profile);
+        } catch (Exception e) {
+            log.warn("Could not send the verification email to {}: {}", profile.getId(), e.getMessage());
+        }
         return issueTokens(profile, List.of(role));
     }
 
