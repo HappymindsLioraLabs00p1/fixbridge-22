@@ -6,6 +6,9 @@
 # the final URLs). Any equivalent host works — Railway, Fly.io, Koyeb, or the GCP Terraform in
 # infra/terraform. Nothing here is Render-specific except the file format.
 
+# Kept declared but no longer wired to the service, which now points at an external Postgres via the
+# dashboard-set DB_* variables. Deleting this block would ask Render to DESTROY the database, so it
+# stays until you remove it deliberately from the dashboard once the new database is proven.
 databases:
   - name: fixbridge-postgres
     databaseName: fixbridge
@@ -26,28 +29,25 @@ services:
     plan: free
     envVars:
       # --- Database -------------------------------------------------------------------------
-      # Spring needs a JDBC URL, which Render's postgres:// connection string isn't. The app builds
-      # it from these parts (see application.yml), so nothing has to be assembled by hand.
+      # Set in the dashboard, NOT wired to a Render database. These were previously bound with
+      # `fromDatabase`, which made them blueprint-managed — so pointing the app at an external
+      # Postgres (Neon, Supabase, Cloud SQL) was silently reverted on every sync.
+      #
+      # Spring assembles the JDBC URL from these parts (see application.yml). For a hosted database
+      # DB_PARAMS must carry `?sslmode=require`; leave out libpq-only options such as
+      # channel_binding, which the JDBC driver does not understand.
       - key: DB_HOST
-        fromDatabase:
-          name: fixbridge-postgres
-          property: host
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: fixbridge-postgres
-          property: port
+        sync: false
       - key: DB_NAME
-        fromDatabase:
-          name: fixbridge-postgres
-          property: database
+        sync: false
       - key: DB_USER
-        fromDatabase:
-          name: fixbridge-postgres
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: fixbridge-postgres
-          property: password
+        sync: false
+      - key: DB_PARAMS
+        sync: false
 
       # --- Security -------------------------------------------------------------------------
       - key: JWT_SECRET
