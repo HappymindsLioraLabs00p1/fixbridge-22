@@ -27,11 +27,20 @@ services:
     plan: free
     envVars:
       # --- Database -------------------------------------------------------------------------
-      # Spring needs a JDBC URL. Render's connection string is postgres://… so it can't be wired
-      # automatically — copy host/port/db from the dashboard into this form:
-      #   jdbc:postgresql://<internal-host>:5432/fixbridge
-      - key: DB_URL
-        sync: false
+      # Spring needs a JDBC URL, which Render's postgres:// connection string isn't. The app builds
+      # it from these parts (see application.yml), so nothing has to be assembled by hand.
+      - key: DB_HOST
+        fromDatabase:
+          name: fixbridge-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: fixbridge-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: fixbridge-postgres
+          property: database
       - key: DB_USER
         fromDatabase:
           name: fixbridge-postgres

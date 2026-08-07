@@ -6,7 +6,9 @@ spring:
   application:
     name: fixbridge-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/fixbridge}
+    # Prefer an explicit DB_URL. Otherwise build the JDBC URL from the host/port/name a managed
+    # provider hands out separately (Render, Railway, Cloud SQL…), so no manual assembly is needed.
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}}
     username: ${DB_USER:fixbridge}
     password: ${DB_PASSWORD:fixbridge}
   jpa:
