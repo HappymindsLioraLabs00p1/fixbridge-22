@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
+import { uploadFile } from "@/lib/api";
 import {
   useInvitations,
   useMyCompliance,
@@ -228,6 +229,38 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
   const [coDesc, setCoDesc] = useState("");
   const [coNet, setCoNet] = useState(0);
   const [coDays, setCoDays] = useState(0);
+  // Completion proof
+  const [doneOpen, setDoneOpen] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [materialsUsed, setMaterialsUsed] = useState("");
+  const [warranty, setWarranty] = useState("");
+  const [beforeFiles, setBeforeFiles] = useState<File[]>([]);
+  const [afterFiles, setAfterFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  async function submitCompletion(e: React.FormEvent) {
+    e.preventDefault();
+    setUploading(true);
+    try {
+      const beforeKeys: string[] = [];
+      const afterKeys: string[] = [];
+      for (const f of beforeFiles) beforeKeys.push(await uploadFile(f));
+      for (const f of afterFiles) afterKeys.push(await uploadFile(f));
+      completion.mutate(
+        {
+          summary,
+          materialsUsed: materialsUsed || undefined,
+          warrantyText: warranty || undefined,
+          completedAt: new Date().toISOString(),
+          beforeKeys,
+          afterKeys,
+        },
+        { onSuccess: () => setDoneOpen(false) },
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -264,13 +297,8 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
         <Button size="sm" variant="outline" onClick={() => setCoOpen((o) => !o)}>
           {coOpen ? "Cancel" : "Report extra work"}
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => completion.mutate({ summary: "Work completed as scoped." })}
-          disabled={completion.isPending}
-        >
-          Mark work complete
+        <Button size="sm" variant="ghost" onClick={() => setDoneOpen((o) => !o)}>
+          {doneOpen ? "Cancel" : "Mark work complete"}
         </Button>
         {bid.isSuccess && <span className="self-center text-sm text-[var(--success)]">Bid submitted ✓</span>}
         {changeOrder.isSuccess && (
@@ -280,6 +308,54 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
           <span className="self-center text-sm text-[var(--success)]">Completion submitted ✓</span>
         )}
       </div>
+
+      {doneOpen && (
+        <form onSubmit={submitCompletion} className="mt-3 space-y-2 border-t pt-3">
+          <Label className="text-xs">
+            Completion proof — the customer reviews this before you&apos;re paid
+          </Label>
+          <Input
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="What did you do? e.g. Replaced P-trap and supply line, pressure tested"
+            required
+          />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input value={materialsUsed} onChange={(e) => setMaterialsUsed(e.target.value)} placeholder="materials used" />
+            <Input value={warranty} onChange={(e) => setWarranty(e.target.value)} placeholder="warranty (e.g. 90-day)" />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Before photos</Label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setBeforeFiles(Array.from(e.target.files ?? []))}
+                className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">After photos</Label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setAfterFiles(Array.from(e.target.files ?? []))}
+                className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+              />
+            </div>
+          </div>
+          {(beforeFiles.length > 0 || afterFiles.length > 0) && (
+            <p className="text-xs text-muted-foreground">
+              {beforeFiles.length} before · {afterFiles.length} after
+            </p>
+          )}
+          <Button type="submit" size="sm" disabled={uploading || completion.isPending || !summary}>
+            {uploading ? "Uploading photos…" : completion.isPending ? "Submitting…" : "Submit completion"}
+          </Button>
+        </form>
+      )}
 
       {coOpen && (
         <form
