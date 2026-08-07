@@ -52,6 +52,20 @@ public class ContractorController {
         contractorService.submitCompletion(SecurityUtil.currentUser(), jobId, req);
     }
 
+    /** Upload a licence / insurance / workers' comp / W-9 for admin review. */
+    @PostMapping("/documents")
+    @ResponseStatus(HttpStatus.CREATED)
+    public com.fixbridge.contractor.dto.ComplianceDtos.DocumentView submitDocument(
+            @Valid @RequestBody com.fixbridge.contractor.dto.ComplianceDtos.SubmitDocumentRequest req) {
+        return contractorService.submitDocument(SecurityUtil.currentUser(), req);
+    }
+
+    /** My compliance standing — what's verified, what's missing, what's expiring. */
+    @GetMapping("/compliance")
+    public com.fixbridge.contractor.dto.ComplianceDtos.ComplianceStatus compliance() {
+        return contractorService.myCompliance(SecurityUtil.currentUser());
+    }
+
     /** Document newly discovered work with its confidential net cost (pauses the job for approval). */
     @PostMapping("/jobs/{jobId}/change-orders")
     @ResponseStatus(HttpStatus.CREATED)

@@ -92,6 +92,18 @@ public class NotificationService {
                 null, "Your " + brand + " payout of " + money(amountCents) + " has been released.", null));
     }
 
+    /** Warn a contractor that required paperwork is about to lapse (FR-CON-3, FR-NOTIF-2). */
+    @Async
+    public void complianceExpiring(UUID userId, String documentKind, java.time.LocalDate expiresOn) {
+        String label = documentKind.replace('_', ' ');
+        customerRecipient(userId).ifPresent(r -> send(r, "compliance_expiring", null,
+                "Your " + label + " expires on " + expiresOn,
+                "Your " + label + " on file with " + brand + " expires on " + expiresOn
+                        + ". Upload a current copy to keep receiving jobs.",
+                "<p>Your <strong>" + label + "</strong> expires on " + expiresOn + ".</p>"
+                        + "<p>Upload a current copy to keep receiving jobs — we can't dispatch you once it lapses.</p>"));
+    }
+
     // ---- internals ----
 
     private record Recipient(UUID userId, String email, String phone) {}

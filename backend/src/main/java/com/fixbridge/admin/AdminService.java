@@ -42,13 +42,15 @@ public class AdminService {
     private final PaymentService paymentService;
     private final com.fixbridge.notification.NotificationService notifications;
     private final com.fixbridge.audit.AuditService audit;
+    private final com.fixbridge.contractor.ComplianceService compliance;
 
     public AdminService(JobRepository jobs, JobService jobService, JobPricingRepository jobPricing,
                         ContractorRepository contractors, JobInvitationRepository invitations,
                         BidRepository bids, ProposalRepository proposals, PricingEngine pricingEngine,
                         PaymentService paymentService,
                         com.fixbridge.notification.NotificationService notifications,
-                        com.fixbridge.audit.AuditService audit) {
+                        com.fixbridge.audit.AuditService audit,
+                        com.fixbridge.contractor.ComplianceService compliance) {
         this.jobs = jobs;
         this.jobService = jobService;
         this.jobPricing = jobPricing;
@@ -60,6 +62,7 @@ public class AdminService {
         this.paymentService = paymentService;
         this.notifications = notifications;
         this.audit = audit;
+        this.compliance = compliance;
     }
 
     /** Jobs that have paid for dispatch and are awaiting contractor assignment. */
@@ -74,14 +77,17 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<AdminDtos.ContractorOption> contractorOptions() {
         return contractors.findAll().stream()
-                .map(c -> new AdminDtos.ContractorOption(
-                        c.getId(), c.getBusinessName(), c.getStatus().name(),
-                        c.isEligibleForWork(), ineligibleReason(c)))
+                .map(c -> {
+                    String reason = ineligibleReason(c);
+                    return new AdminDtos.ContractorOption(
+                            c.getId(), c.getBusinessName(), c.getStatus().name(), reason == null, reason);
+                })
                 .toList();
     }
 
     private String ineligibleReason(Contractor c) {
         if (c.getStatus() != ContractorStatus.approved) return "Not approved (" + c.getStatus().name() + ")";
+        if (!compliance.isCompliant(c.getId())) return "Licence or insurance missing/expired";
         if (!c.isConnectOnboarded()) return "Stripe Connect onboarding incomplete";
         if (!c.isPayoutsEnabled()) return "Payouts not enabled";
         return null;
@@ -112,6 +118,11 @@ public class AdminService {
                 .orElseThrow(() -> ApiException.notFound("Contractor"));
         if (contractor.getStatus() != ContractorStatus.approved) {
             throw ApiException.conflict("Contractor is not approved");
+        }
+        // FR-CON-3: never dispatch someone whose licence or insurance is missing or expired.
+        if (!compliance.isCompliant(contractorId)) {
+            throw ApiException.conflict(
+                    "Contractor cannot be dispatched — required licence or insurance is missing or expired");
         }
         if (invitations.findByJobIdAndContractorId(jobId, contractorId).isPresent()) {
             throw ApiException.conflict("Contractor already invited to this job");

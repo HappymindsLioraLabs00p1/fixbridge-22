@@ -214,6 +214,24 @@ export interface CompletionView {
   approvedAt: string | null;
 }
 
+export interface ComplianceDocument {
+  id: string;
+  kind: string;
+  jurisdiction: string | null;
+  number: string | null;
+  status: string;
+  expiresOn: string | null;
+  daysUntilExpiry: number | null;
+  fileUrl: string | null;
+}
+
+export interface ComplianceStatus {
+  compliant: boolean;
+  missingOrUnverified: string[];
+  expired: string[];
+  documents: ComplianceDocument[];
+}
+
 export interface ContractorOption {
   id: string;
   businessName: string;

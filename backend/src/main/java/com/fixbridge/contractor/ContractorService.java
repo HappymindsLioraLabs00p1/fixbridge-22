@@ -37,6 +37,7 @@ public class ContractorService {
     private final StripeClient stripe;
     private final com.fixbridge.notification.NotificationService notifications;
     private final com.fixbridge.job.CompletionReportRepository completionReports;
+    private final ComplianceService compliance;
     private final FixBridgeProperties props;
 
     public ContractorService(ContractorRepository contractors, JobService jobService,
@@ -44,7 +45,7 @@ public class ContractorService {
                              PropertyRepository properties, AiAssessmentRepository assessments,
                              StripeClient stripe, com.fixbridge.notification.NotificationService notifications,
                              com.fixbridge.job.CompletionReportRepository completionReports,
-                             FixBridgeProperties props) {
+                             ComplianceService compliance, FixBridgeProperties props) {
         this.contractors = contractors;
         this.jobService = jobService;
         this.invitations = invitations;
@@ -54,6 +55,7 @@ public class ContractorService {
         this.stripe = stripe;
         this.notifications = notifications;
         this.completionReports = completionReports;
+        this.compliance = compliance;
         this.props = props;
     }
 
@@ -158,6 +160,18 @@ public class ContractorService {
 
     private static String[] toArray(java.util.List<String> keys) {
         return keys == null ? new String[0] : keys.toArray(String[]::new);
+    }
+
+    /** Upload a compliance document (licence, insurance, workers' comp, W-9). */
+    @Transactional
+    public com.fixbridge.contractor.dto.ComplianceDtos.DocumentView submitDocument(
+            AuthUser user, com.fixbridge.contractor.dto.ComplianceDtos.SubmitDocumentRequest req) {
+        return compliance.submit(requireContractor(user).getId(), req);
+    }
+
+    @Transactional(readOnly = true)
+    public com.fixbridge.contractor.dto.ComplianceDtos.ComplianceStatus myCompliance(AuthUser user) {
+        return compliance.statusFor(requireContractor(user).getId());
     }
 
     private Contractor requireContractor(AuthUser user) {

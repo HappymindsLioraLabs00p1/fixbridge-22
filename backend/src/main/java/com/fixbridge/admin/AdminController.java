@@ -26,12 +26,15 @@ public class AdminController {
     private final AdminService adminService;
     private final ChangeOrderService changeOrderService;
     private final com.fixbridge.payment.PaymentService paymentService;
+    private final com.fixbridge.contractor.ComplianceService complianceService;
 
     public AdminController(AdminService adminService, ChangeOrderService changeOrderService,
-                           com.fixbridge.payment.PaymentService paymentService) {
+                           com.fixbridge.payment.PaymentService paymentService,
+                           com.fixbridge.contractor.ComplianceService complianceService) {
         this.adminService = adminService;
         this.changeOrderService = changeOrderService;
         this.paymentService = paymentService;
+        this.complianceService = complianceService;
     }
 
     @GetMapping("/dispatch-queue")
@@ -65,6 +68,29 @@ public class AdminController {
     @PostMapping("/jobs/{jobId}/payout")
     public PaymentDtos.PayoutView releasePayout(@PathVariable UUID jobId) {
         return adminService.releasePayout(SecurityUtil.currentUser(), jobId);
+    }
+
+    // ---- Contractor compliance (FR-CON-1/2/3) ----
+
+    /** A contractor's documents and what's blocking their dispatch eligibility. */
+    @GetMapping("/contractors/{contractorId}/compliance")
+    public com.fixbridge.contractor.dto.ComplianceDtos.ComplianceStatus compliance(@PathVariable UUID contractorId) {
+        return complianceService.statusFor(contractorId);
+    }
+
+    /** Verify or reject a submitted document; the contractor's status is recomputed. */
+    @PostMapping("/documents/{documentId}/review")
+    public com.fixbridge.contractor.dto.ComplianceDtos.DocumentView reviewDocument(
+            @PathVariable UUID documentId,
+            @Valid @RequestBody com.fixbridge.contractor.dto.ComplianceDtos.ReviewRequest req) {
+        return complianceService.review(SecurityUtil.currentUser(), documentId, req.approve(), req.note());
+    }
+
+    /** Suspend or reinstate a contractor. */
+    @PostMapping("/contractors/{contractorId}/suspension")
+    public void setSuspension(@PathVariable UUID contractorId,
+                              @Valid @RequestBody com.fixbridge.contractor.dto.ComplianceDtos.SuspendRequest req) {
+        complianceService.setSuspended(SecurityUtil.currentUser(), contractorId, req.suspended(), req.reason());
     }
 
     // ---- Money controls: refunds, disputes, payout holds (FR-PAY-9, FR-ADMIN-4) ----

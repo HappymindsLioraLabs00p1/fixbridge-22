@@ -9,6 +9,7 @@ import type {
   AdminProposal,
   BidOption,
   BillingCheckout,
+  ComplianceStatus,
   CompletionView,
   ContractorOption,
   CheckoutView,
@@ -165,6 +166,28 @@ export function useConfirmCompletion(jobId: string) {
       qc.invalidateQueries({ queryKey: ["completion", jobId] });
       qc.invalidateQueries({ queryKey: ["job", jobId] });
     },
+  });
+}
+
+// ---- Contractor compliance ----
+export function useMyCompliance() {
+  return useQuery({
+    queryKey: ["compliance"],
+    queryFn: () => api.get<ComplianceStatus>("/api/contractor/compliance"),
+  });
+}
+
+export function useSubmitDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      kind: string;
+      number?: string;
+      jurisdiction?: string;
+      expiresOn?: string;
+      storageKey?: string;
+    }) => api.post("/api/contractor/documents", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["compliance"] }),
   });
 }
 

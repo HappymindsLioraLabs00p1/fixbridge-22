@@ -4,7 +4,9 @@ import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
 import {
   useInvitations,
+  useMyCompliance,
   useOnboardContractor,
+  useSubmitDocument,
   useSubmitBid,
   useSubmitChangeOrder,
   useSubmitCompletion,
@@ -13,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { UrgencyBadge } from "@/components/status-badge";
 import { formatCents } from "@/lib/utils";
 import type { ContractorInvitation } from "@/lib/types";
@@ -28,9 +31,116 @@ export default function ContractorDashboard() {
           </p>
         </div>
         <OnboardCard />
+        <ComplianceCard />
         <InvitationsList />
       </div>
     </RequireRole>
+  );
+}
+
+const DOC_KINDS = [
+  { value: "license", label: "Trade licence", required: true },
+  { value: "insurance", label: "Liability insurance", required: true },
+  { value: "workers_comp", label: "Workers' compensation", required: false },
+  { value: "w9", label: "W-9", required: false },
+];
+
+function ComplianceCard() {
+  const { data: compliance } = useMyCompliance();
+  const submit = useSubmitDocument();
+  const [kind, setKind] = useState("license");
+  const [number, setNumber] = useState("");
+  const [jurisdiction, setJurisdiction] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Licensing &amp; insurance</CardTitle>
+        <CardDescription>
+          We can&apos;t send you to a customer&apos;s property without a current trade licence and
+          liability insurance on file.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {compliance && (
+          <div
+            className="rounded-md border p-3 text-sm"
+            style={{ borderColor: compliance.compliant ? "var(--success)" : "var(--warning)" }}
+          >
+            {compliance.compliant ? (
+              <p className="font-medium text-[var(--success)]">
+                You&apos;re cleared for dispatch ✓
+              </p>
+            ) : (
+              <p className="font-medium text-[var(--warning)]">
+                Not cleared for dispatch — {compliance.missingOrUnverified.map((k) => k.replace("_", " ")).join(" and ")}{" "}
+                {compliance.expired.length > 0 ? `(expired: ${compliance.expired.join(", ")})` : "outstanding"}.
+              </p>
+            )}
+          </div>
+        )}
+
+        {compliance && compliance.documents.length > 0 && (
+          <div className="space-y-2">
+            {compliance.documents.map((d) => (
+              <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+                <span className="capitalize">{d.kind.replace("_", " ")}</span>
+                <span className="text-muted-foreground">
+                  {d.number ? `#${d.number}` : "—"}
+                  {d.expiresOn && <> · expires {d.expiresOn}</>}
+                  {d.daysUntilExpiry != null && d.daysUntilExpiry <= 30 && d.daysUntilExpiry >= 0 && (
+                    <span className="text-[var(--warning)]"> · {d.daysUntilExpiry} days left</span>
+                  )}
+                </span>
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs capitalize"
+                  style={{
+                    background:
+                      d.status === "valid" ? "var(--success)" : d.status === "pending" ? "var(--muted)" : "var(--destructive)",
+                    color: d.status === "pending" ? "var(--muted-foreground)" : "#fff",
+                  }}
+                >
+                  {d.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form
+          className="space-y-2 border-t pt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit.mutate(
+              { kind, number, jurisdiction, expiresOn: expiresOn || undefined },
+              { onSuccess: () => { setNumber(""); setJurisdiction(""); setExpiresOn(""); } },
+            );
+          }}
+        >
+          <Label className="text-xs">Add or renew a document</Label>
+          <div className="grid gap-2 sm:grid-cols-4">
+            <Select value={kind} onChange={(e) => setKind(e.target.value)}>
+              {DOC_KINDS.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                  {k.required ? " (required)" : ""}
+                </option>
+              ))}
+            </Select>
+            <Input placeholder="number" value={number} onChange={(e) => setNumber(e.target.value)} />
+            <Input placeholder="state / jurisdiction" value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)} />
+            <Input type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} />
+          </div>
+          <Button type="submit" size="sm" variant="outline" disabled={submit.isPending}>
+            {submit.isPending ? "Submitting…" : "Submit for review"}
+          </Button>
+          {submit.isSuccess && (
+            <p className="text-xs text-muted-foreground">Submitted — an admin will verify it shortly.</p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
