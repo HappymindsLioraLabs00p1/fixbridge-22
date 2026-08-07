@@ -30,7 +30,13 @@ public record FixBridgeProperties(
             String corsAllowedOrigins
     ) {}
 
-    public record Ai(String provider, Provider openai, Provider claude, boolean stubMode) {
+    /**
+     * AI provider config. {@code provider} selects one of openai | claude | openrouter.
+     * OpenRouter is an aggregator that speaks the OpenAI Chat Completions API and fronts many
+     * models, so its model names are namespaced (e.g. {@code anthropic/claude-sonnet-4}).
+     */
+    public record Ai(String provider, Provider openai, Provider claude, Provider openrouter,
+                     String appUrl, String appTitle, boolean stubMode) {
         public record Provider(String baseUrl, String apiKey, String model) {}
     }
 

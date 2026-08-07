@@ -61,6 +61,13 @@ services:
       # false = live OpenAI/Claude/Stripe/Twilio/Resend; then fill in the keys below.
       - key: INTEGRATIONS_STUB_MODE
         value: "true"
+      # AI: openrouter (one key, many models) | openai | claude
+      - key: AI_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4o-mini
       - key: OPENAI_API_KEY
         sync: false
       - key: CLAUDE_API_KEY

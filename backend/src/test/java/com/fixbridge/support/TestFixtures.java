@@ -16,7 +16,10 @@ public final class TestFixtures {
     public static FixBridgeProperties props() {
         var openai = new FixBridgeProperties.Ai.Provider("https://api.openai.com/v1", "", "gpt-test");
         var claude = new FixBridgeProperties.Ai.Provider("https://api.anthropic.com/v1", "", "claude-test");
-        var ai = new FixBridgeProperties.Ai("openai", openai, claude, true);
+        var openrouter = new FixBridgeProperties.Ai.Provider(
+                "https://openrouter.ai/api/v1", "", "openai/gpt-4o-mini");
+        var ai = new FixBridgeProperties.Ai("openai", openai, claude, openrouter,
+                "https://fixbridge.example.com", "FixBridge", true);
         var security = new FixBridgeProperties.Security(
                 "test-secret-test-secret-test-secret-1234", 15, 14, "http://localhost:3000");
         var brand = new FixBridgeProperties.Brand("FixBridge", "support@example.com", "example.com", "#1f6feb");

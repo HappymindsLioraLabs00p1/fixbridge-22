@@ -35,6 +35,7 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
     private final FixBridgeProperties.Ai cfg;
     private final WebClient openai;
     private final WebClient claude;
+    private final WebClient openrouter;
 
     public LiveAiAssessmentClient(FixBridgeProperties props) {
         this.cfg = props.ai();
@@ -47,6 +48,13 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
                 .defaultHeader("x-api-key", cfg.claude().apiKey())
                 .defaultHeader("anthropic-version", "2023-06-01")
                 .build();
+        this.openrouter = WebClient.builder()
+                .baseUrl(cfg.openrouter().baseUrl())
+                .defaultHeader("Authorization", "Bearer " + cfg.openrouter().apiKey())
+                // OpenRouter uses these to attribute traffic to your app.
+                .defaultHeader("HTTP-Referer", cfg.appUrl() == null ? "" : cfg.appUrl())
+                .defaultHeader("X-Title", cfg.appTitle() == null ? "" : cfg.appTitle())
+                .build();
     }
 
     @Override
@@ -54,9 +62,11 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
         List<String> images = imageUrls == null ? List.of() : imageUrls;
         String prompt = SYSTEM + "\n\nReported issue: " + (description == null ? "" : description);
         try {
-            return "claude".equalsIgnoreCase(cfg.provider())
-                    ? callClaude(prompt, images)
-                    : callOpenAi(prompt, images);
+            return switch (cfg.provider() == null ? "openai" : cfg.provider().toLowerCase()) {
+                case "claude" -> callClaude(prompt, images);
+                case "openrouter" -> callOpenRouter(prompt, images);
+                default -> callOpenAi(prompt, images);
+            };
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
@@ -105,6 +115,54 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
         return AssessmentJson.parse(extractClaudeToolInput(root));
     }
 
+    /**
+     * OpenRouter fronts many models behind the OpenAI Chat Completions API, so this is a
+     * /chat/completions call — not the Responses API used above. Structured output comes back via
+     * response_format, and images ride as image_url content parts.
+     */
+    private AssessmentResult callOpenRouter(String prompt, List<String> imageUrls) {
+        List<Map<String, Object>> content = new ArrayList<>();
+        content.add(Map.of("type", "text", "text", prompt));
+        for (String url : imageUrls) {
+            content.add(Map.of("type", "image_url", "image_url", Map.of("url", url)));
+        }
+        Map<String, Object> body = Map.of(
+                "model", cfg.openrouter().model(),
+                "messages", List.of(Map.of("role", "user", "content", content)),
+                "response_format", Map.of(
+                        "type", "json_schema",
+                        "json_schema", Map.of(
+                                "name", "assessment",
+                                "strict", true,
+                                "schema", AssessmentJson.schema())));
+        JsonNode root = openrouter.post().uri("/chat/completions")
+                .bodyValue(body).retrieve().bodyToMono(JsonNode.class).block();
+        return AssessmentJson.parse(extractChatCompletionJson(root));
+    }
+
+    /** Chat Completions: the structured payload arrives as JSON text in the first choice's message. */
+    private JsonNode extractChatCompletionJson(JsonNode root) {
+        if (root != null) {
+            JsonNode message = root.path("choices").path(0).path("message");
+            String text = message.path("content").asText(null);
+            if (text != null && !text.isBlank()) {
+                try {
+                    return new com.fasterxml.jackson.databind.ObjectMapper().readTree(text);
+                } catch (Exception ignored) {
+                    // fall through — a model that ignored the schema is a provider error, not a crash
+                }
+            }
+            // Some models return the object directly rather than as a JSON string.
+            if (message.path("content").isObject()) {
+                return message.path("content");
+            }
+            if (root.has("error")) {
+                log.error("OpenRouter returned an error: {}", root.path("error").toString());
+            }
+        }
+        throw new ApiException(HttpStatus.BAD_GATEWAY, "Unexpected assessment response.");
+    }
+
     /** Responses API: find the first output_text content node and parse its JSON text. */
     private JsonNode extractOpenAiJson(JsonNode root) {
         if (root != null) {
@@ -143,6 +201,10 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
 
     @Override
     public String model() {
-        return "claude".equalsIgnoreCase(cfg.provider()) ? cfg.claude().model() : cfg.openai().model();
+        return switch (cfg.provider() == null ? "openai" : cfg.provider().toLowerCase()) {
+            case "claude" -> cfg.claude().model();
+            case "openrouter" -> cfg.openrouter().model();
+            default -> cfg.openai().model();
+        };
     }
 }

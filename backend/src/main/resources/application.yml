@@ -63,7 +63,7 @@ fixbridge:
     cors-allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
   ai:
     # provider + model names are configuration, changeable without a rebuild
-    provider: ${AI_PROVIDER:openai}            # openai | claude
+    provider: ${AI_PROVIDER:openai}            # openai | claude | openrouter
     openai:
       base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
       api-key: ${OPENAI_API_KEY:}
@@ -72,6 +72,15 @@ fixbridge:
       base-url: ${CLAUDE_BASE_URL:https://api.anthropic.com/v1}
       api-key: ${CLAUDE_API_KEY:}
       model: ${CLAUDE_MODEL:claude-sonnet-5}
+    openrouter:
+      # One key, many models. Model names are namespaced, e.g. anthropic/claude-sonnet-4
+      # or openai/gpt-4o-mini. Pick one that supports vision + structured outputs.
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      api-key: ${OPENROUTER_API_KEY:}
+      model: ${OPENROUTER_MODEL:openai/gpt-4o-mini}
+    # OpenRouter attributes requests to your app via these (optional but recommended).
+    app-url: ${AI_APP_URL:https://fixbridge.example.com}
+    app-title: ${AI_APP_TITLE:FixBridge}
     # when true (frontend-first phase), the AI + payment clients return deterministic stubs
     stub-mode: ${INTEGRATIONS_STUB_MODE:true}
   stripe:

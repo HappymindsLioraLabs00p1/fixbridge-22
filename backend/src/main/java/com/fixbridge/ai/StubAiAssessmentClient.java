@@ -96,8 +96,11 @@ public class StubAiAssessmentClient implements AiAssessmentClient {
 
     @Override
     public String model() {
-        return "openai".equalsIgnoreCase(props.ai().provider())
-                ? props.ai().openai().model()
-                : props.ai().claude().model();
+        var ai = props.ai();
+        return switch (ai.provider() == null ? "openai" : ai.provider().toLowerCase()) {
+            case "claude" -> ai.claude().model();
+            case "openrouter" -> ai.openrouter().model();
+            default -> ai.openai().model();
+        };
     }
 }
