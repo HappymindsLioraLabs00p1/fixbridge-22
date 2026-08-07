@@ -7,8 +7,10 @@ spring:
     name: fixbridge-backend
   datasource:
     # Prefer an explicit DB_URL. Otherwise build the JDBC URL from the host/port/name a managed
-    # provider hands out separately (Render, Railway, Cloud SQL…), so no manual assembly is needed.
-    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}}
+    # provider hands out separately (Render, Neon, Supabase, Cloud SQL…), so no manual assembly.
+    # DB_PARAMS carries driver options — hosted Postgres generally REQUIRES TLS, e.g. Neon and
+    # Supabase both need "?sslmode=require". Empty by default so local development stays plaintext.
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}${DB_PARAMS:}}
     username: ${DB_USER:fixbridge}
     password: ${DB_PASSWORD:fixbridge}
   jpa:
