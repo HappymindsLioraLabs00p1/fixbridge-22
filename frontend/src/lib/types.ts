@@ -214,6 +214,29 @@ export interface CompletionView {
   approvedAt: string | null;
 }
 
+export interface ContractorPerformance {
+  contractorId: string;
+  businessName: string;
+  status: string;
+  bidsSubmitted: number;
+  jobsPaidOut: number;
+  totalEarnedCents: number;
+}
+
+export interface ReportOverview {
+  collectedCents: number;
+  refundedCents: number;
+  netRevenueCents: number;
+  contractorPayoutsCents: number;
+  grossProfitCents: number;
+  grossMarginPercent: number;
+  jobsReported: number;
+  jobsCompleted: number;
+  conversionPercent: number;
+  funnel: Record<string, number>;
+  contractors: ContractorPerformance[];
+}
+
 export interface ComplianceDocument {
   id: string;
   kind: string;

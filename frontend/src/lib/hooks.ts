@@ -21,6 +21,7 @@ import type {
   NotificationItem,
   PaymentView,
   PayoutHoldView,
+  ReportOverview,
   PlanView,
   Property,
   SubscriptionView,
@@ -188,6 +189,14 @@ export function useSubmitDocument() {
       storageKey?: string;
     }) => api.post("/api/contractor/documents", body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["compliance"] }),
+  });
+}
+
+// ---- Admin: reporting ----
+export function useReportOverview() {
+  return useQuery({
+    queryKey: ["admin-reports"],
+    queryFn: () => api.get<ReportOverview>("/api/admin/reports/overview"),
   });
 }
 

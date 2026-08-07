@@ -37,11 +37,18 @@ export default function AdminDashboard() {
               You are the only role that sees both the contractor net and the customer retail — and the margin.
             </p>
           </div>
-          <Link href="/admin/compliance">
-            <Button variant="outline" size="sm">
-              Contractor compliance
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/admin/reports">
+              <Button variant="outline" size="sm">
+                Reporting
+              </Button>
+            </Link>
+            <Link href="/admin/compliance">
+              <Button variant="outline" size="sm">
+                Contractor compliance
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {isLoading ? (
