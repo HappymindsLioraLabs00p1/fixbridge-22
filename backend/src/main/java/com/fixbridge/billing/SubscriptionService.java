@@ -44,7 +44,7 @@ public class SubscriptionService {
 
     public List<BillingDtos.PlanView> plans() {
         Map<String, String> priceIds = props.billing().plans();
-        boolean stub = props.ai().stubMode();
+        boolean stub = props.stripe().stubMode();
         return CATALOG.stream()
                 .map(p -> {
                     boolean priceConfigured = priceIds.getOrDefault(p.code(), "").isBlank() == false;
@@ -59,7 +59,7 @@ public class SubscriptionService {
         Plan plan = CATALOG.stream().filter(p -> p.code().equals(planCode)).findFirst()
                 .orElseThrow(() -> ApiException.badRequest("Unknown plan"));
         String priceId = props.billing().plans().getOrDefault(plan.code(), "");
-        if (!props.ai().stubMode() && priceId.isBlank()) {
+        if (!props.stripe().stubMode() && priceId.isBlank()) {
             throw ApiException.conflict("This plan is not configured for billing yet");
         }
 

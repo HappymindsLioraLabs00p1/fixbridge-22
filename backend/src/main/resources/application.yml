@@ -86,8 +86,9 @@ fixbridge:
     structured-outputs: ${AI_STRUCTURED_OUTPUTS:true}
     # Only meaningful for reasoning models (e.g. the :reasoning variants on OpenRouter).
     reasoning: ${AI_REASONING:false}
-    # when true (frontend-first phase), the AI + payment clients return deterministic stubs
-    stub-mode: ${INTEGRATIONS_STUB_MODE:true}
+    # Each integration can be stubbed independently, so you can run the AI live while payments
+    # stay stubbed. Each falls back to INTEGRATIONS_STUB_MODE, which is the master switch.
+    stub-mode: ${AI_STUB_MODE:${INTEGRATIONS_STUB_MODE:true}}
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
@@ -95,11 +96,13 @@ fixbridge:
     cancel-url: ${STRIPE_CANCEL_URL:http://localhost:3000/customer?canceled=1}
     connect-return-url: ${STRIPE_CONNECT_RETURN_URL:http://localhost:3000/contractor?onboarded=1}
     connect-refresh-url: ${STRIPE_CONNECT_REFRESH_URL:http://localhost:3000/contractor?refresh=1}
+    stub-mode: ${PAYMENTS_STUB_MODE:${INTEGRATIONS_STUB_MODE:true}}
   storage:
     bucket: ${GCS_BUCKET:fixbridge-dev}
     signed-url-ttl-minutes: ${SIGNED_URL_TTL:15}
     # In stub mode, uploads/downloads route to this backend's own local object store.
     public-base-url: ${STORAGE_PUBLIC_BASE_URL:http://localhost:8080}
+    stub-mode: ${STORAGE_STUB_MODE:${INTEGRATIONS_STUB_MODE:true}}
   twilio:
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}
@@ -107,6 +110,8 @@ fixbridge:
   resend:
     api-key: ${RESEND_API_KEY:}
     from-email: ${RESEND_FROM_EMAIL:notifications@example.com}
+  notifications:
+    stub-mode: ${NOTIFICATIONS_STUB_MODE:${INTEGRATIONS_STUB_MODE:true}}
   billing:
     # Plan code → Stripe recurring Price ID. Amounts live in Stripe (admin-editable), never here.
     plans:

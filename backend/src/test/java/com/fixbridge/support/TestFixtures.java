@@ -24,12 +24,13 @@ public final class TestFixtures {
                 "test-secret-test-secret-test-secret-1234", 15, 14, "http://localhost:3000");
         var brand = new FixBridgeProperties.Brand("FixBridge", "support@example.com", "example.com", "#1f6feb");
         var stripe = new FixBridgeProperties.Stripe("", "", "http://localhost:3000/ok",
-                "http://localhost:3000/cancel", "http://localhost:3000/return", "http://localhost:3000/refresh");
-        var storage = new FixBridgeProperties.Storage("bucket", 15, "http://localhost:8080");
+                "http://localhost:3000/cancel", "http://localhost:3000/return", "http://localhost:3000/refresh", true);
+        var storage = new FixBridgeProperties.Storage("bucket", 15, "http://localhost:8080", true);
         var twilio = new FixBridgeProperties.Twilio("", "", "");
         var resend = new FixBridgeProperties.Resend("", "notifications@example.com");
+        var notifications = new FixBridgeProperties.Notifications(true);
         var billing = new FixBridgeProperties.Billing(java.util.Map.of("diy_plus", "price_test"));
-        return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend, billing);
+        return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend, notifications, billing);
     }
 
     public static AssessmentResult assessment(String category, AiUrgency urgency, double confidence,

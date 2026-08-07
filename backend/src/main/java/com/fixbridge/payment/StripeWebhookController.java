@@ -92,7 +92,7 @@ public class StripeWebhookController {
                                String paymentIntentId, Long amountCents) {}
 
     private StripeEvent parseAndVerify(String rawBody, String signature) throws Exception {
-        boolean stub = props.ai().stubMode() || props.stripe().webhookSecret() == null
+        boolean stub = props.stripe().stubMode() || props.stripe().webhookSecret() == null
                 || props.stripe().webhookSecret().isBlank();
         if (!stub) {
             // Real verification against the raw body.

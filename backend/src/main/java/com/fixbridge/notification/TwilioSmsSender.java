@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-/** Live SMS via the Twilio REST API. Active only when {@code fixbridge.ai.stub-mode=false}. */
+/** Live SMS via the Twilio REST API. Active only when {@code fixbridge.notifications.stub-mode=false}. */
 @Component
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "false")
+@ConditionalOnProperty(prefix = "fixbridge.notifications", name = "stub-mode", havingValue = "false")
 public class TwilioSmsSender implements SmsSender {
 
     private static final Logger log = LoggerFactory.getLogger(TwilioSmsSender.class);

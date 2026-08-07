@@ -59,8 +59,18 @@ services:
       # --- Integrations ---------------------------------------------------------------------
       # true = deterministic stubs (no external keys needed — good for a client demo).
       # false = live OpenAI/Claude/Stripe/Twilio/Resend; then fill in the keys below.
+      # Master switch. Each integration below can override it independently, so you can run the
+      # AI for real while payments/notifications stay stubbed.
       - key: INTEGRATIONS_STUB_MODE
         value: "true"
+      - key: AI_STUB_MODE            # false = call OpenRouter for real
+        value: "true"
+      - key: PAYMENTS_STUB_MODE      # keep true until Stripe keys are set
+        value: "true"
+      - key: NOTIFICATIONS_STUB_MODE # keep true until Twilio/Resend keys are set
+        value: "true"
+      - key: AI_REASONING            # true for an OpenRouter ":reasoning" model
+        value: "false"
       # AI: openrouter (one key, many models) | openai | claude
       - key: AI_PROVIDER
         value: openrouter

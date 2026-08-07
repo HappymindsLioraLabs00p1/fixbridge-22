@@ -12,7 +12,7 @@ import java.util.UUID;
  * a real {@code LiveStripeClient} (Stripe SDK) without changing callers.
  */
 @Component
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "fixbridge.stripe", name = "stub-mode", havingValue = "true", matchIfMissing = true)
 public class StubStripeClient implements StripeClient {
 
     @Override

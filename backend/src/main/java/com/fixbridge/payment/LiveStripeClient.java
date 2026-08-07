@@ -20,12 +20,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * Real Stripe implementation (SDK), active only when {@code fixbridge.ai.stub-mode=false}. Uses SEPARATE
+ * Real Stripe implementation (SDK), active only when {@code fixbridge.stripe.stub-mode=false}. Uses SEPARATE
  * CHARGES AND TRANSFERS: customers are charged via Checkout on the platform account; contractors are paid
  * by an explicit Connect transfer after completion. Onboarding uses Stripe-hosted Connect (Express).
  */
 @Component
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "false")
+@ConditionalOnProperty(prefix = "fixbridge.stripe", name = "stub-mode", havingValue = "false")
 public class LiveStripeClient implements StripeClient {
 
     private static final Logger log = LoggerFactory.getLogger(LiveStripeClient.class);

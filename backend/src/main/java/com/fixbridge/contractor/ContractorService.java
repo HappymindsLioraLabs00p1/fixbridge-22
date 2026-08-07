@@ -72,7 +72,7 @@ public class ContractorService {
         contractor.setContactPhone(req.contactPhone());
 
         String onboardingUrl = null;
-        if (props.ai().stubMode()) {
+        if (props.stripe().stubMode()) {
             // Frontend-first: complete onboarding immediately so the payout leg can be exercised.
             contractor.setStatus(ContractorStatus.approved);
             contractor.setStripeAccountId("acct_stub_" + user.id().toString().replace("-", "").substring(0, 12));

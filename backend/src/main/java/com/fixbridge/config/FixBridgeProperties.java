@@ -19,6 +19,7 @@ public record FixBridgeProperties(
         Storage storage,
         Twilio twilio,
         Resend resend,
+        Notifications notifications,
         Billing billing
 ) {
     public record Brand(String name, String supportEmail, String domain, String primaryColor) {}
@@ -51,10 +52,17 @@ public record FixBridgeProperties(
             String successUrl,
             String cancelUrl,
             String connectReturnUrl,
-            String connectRefreshUrl
+            String connectRefreshUrl,
+            /** Stub payments independently of the other integrations. */
+            boolean stubMode
     ) {}
 
-    public record Storage(String bucket, long signedUrlTtlMinutes, String publicBaseUrl) {}
+    /** Grouping for the SMS/email stub switch so notifications can go live on their own. */
+    public record Notifications(boolean stubMode) {}
+
+    public record Storage(String bucket, long signedUrlTtlMinutes, String publicBaseUrl,
+                          /** Stub storage (local object store) independently of the rest. */
+                          boolean stubMode) {}
 
     public record Twilio(String accountSid, String authToken, String fromNumber) {}
 

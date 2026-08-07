@@ -13,10 +13,10 @@ import java.util.UUID;
 
 /**
  * Live storage on Google Cloud Storage: private bucket + V4 signed PUT/GET URLs. Active only when
- * {@code fixbridge.ai.stub-mode=false}. Uses application default credentials (Workload Identity in GKE).
+ * {@code fixbridge.storage.stub-mode=false}. Uses application default credentials (Workload Identity in GKE).
  */
 @Service
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "false")
+@ConditionalOnProperty(prefix = "fixbridge.storage", name = "stub-mode", havingValue = "false")
 public class GcsStorageService implements StorageService {
 
     private final Storage storage;

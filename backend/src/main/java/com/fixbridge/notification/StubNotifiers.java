@@ -8,14 +8,14 @@ import org.springframework.stereotype.Component;
 /**
  * Deterministic stub SMS + email senders for the frontend-first phase (no Twilio/Resend keys). They log
  * and report success so the notification path is exercised end-to-end locally. Replaced by
- * {@code TwilioSmsSender}/{@code ResendEmailSender} when {@code fixbridge.ai.stub-mode=false}.
+ * {@code TwilioSmsSender}/{@code ResendEmailSender} when {@code fixbridge.notifications.stub-mode=false}.
  */
 public final class StubNotifiers {
 
     private StubNotifiers() {}
 
     @Component
-    @ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "fixbridge.notifications", name = "stub-mode", havingValue = "true", matchIfMissing = true)
     public static class StubSmsSender implements SmsSender {
         private static final Logger log = LoggerFactory.getLogger(StubSmsSender.class);
 
@@ -27,7 +27,7 @@ public final class StubNotifiers {
     }
 
     @Component
-    @ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "fixbridge.notifications", name = "stub-mode", havingValue = "true", matchIfMissing = true)
     public static class StubEmailSender implements EmailSender {
         private static final Logger log = LoggerFactory.getLogger(StubEmailSender.class);
 

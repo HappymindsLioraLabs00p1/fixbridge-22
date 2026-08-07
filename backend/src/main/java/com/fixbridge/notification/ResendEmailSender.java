@@ -10,9 +10,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.List;
 import java.util.Map;
 
-/** Live email via the Resend API. Active only when {@code fixbridge.ai.stub-mode=false}. */
+/** Live email via the Resend API. Active only when {@code fixbridge.notifications.stub-mode=false}. */
 @Component
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "false")
+@ConditionalOnProperty(prefix = "fixbridge.notifications", name = "stub-mode", havingValue = "false")
 public class ResendEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(ResendEmailSender.class);

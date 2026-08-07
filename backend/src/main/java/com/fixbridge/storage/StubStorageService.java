@@ -9,10 +9,10 @@ import java.util.UUID;
 /**
  * Frontend-first storage: issues upload/download URLs that point at this backend's own local object
  * store ({@link LocalStorageController}), so photo upload genuinely works with no GCP. Replaced by
- * {@link GcsStorageService} when {@code fixbridge.ai.stub-mode=false}.
+ * {@link GcsStorageService} when {@code fixbridge.storage.stub-mode=false}.
  */
 @Service
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "fixbridge.storage", name = "stub-mode", havingValue = "true", matchIfMissing = true)
 public class StubStorageService implements StorageService {
 
     private final String baseUrl;

@@ -22,7 +22,7 @@ import java.nio.file.Path;
  * go straight to GCS). Path traversal is rejected.
  */
 @RestController
-@ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "fixbridge.storage", name = "stub-mode", havingValue = "true", matchIfMissing = true)
 @RequestMapping("/api/local-storage")
 public class LocalStorageController {
 
