@@ -19,7 +19,7 @@ public final class TestFixtures {
         var openrouter = new FixBridgeProperties.Ai.Provider(
                 "https://openrouter.ai/api/v1", "", "openai/gpt-4o-mini");
         var ai = new FixBridgeProperties.Ai("openai", openai, claude, openrouter,
-                "https://fixbridge.example.com", "FixBridge", true);
+                "https://fixbridge.example.com", "FixBridge", true, false, true);
         var security = new FixBridgeProperties.Security(
                 "test-secret-test-secret-test-secret-1234", 15, 14, "http://localhost:3000");
         var brand = new FixBridgeProperties.Brand("FixBridge", "support@example.com", "example.com", "#1f6feb");

@@ -126,15 +126,20 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
         for (String url : imageUrls) {
             content.add(Map.of("type", "image_url", "image_url", Map.of("url", url)));
         }
-        Map<String, Object> body = Map.of(
-                "model", cfg.openrouter().model(),
-                "messages", List.of(Map.of("role", "user", "content", content)),
-                "response_format", Map.of(
-                        "type", "json_schema",
-                        "json_schema", Map.of(
-                                "name", "assessment",
-                                "strict", true,
-                                "schema", AssessmentJson.schema())));
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("model", cfg.openrouter().model());
+        body.put("messages", List.of(Map.of("role", "user", "content", content)));
+        if (cfg.structuredOutputs()) {
+            // Ask the model to conform to the schema. Not every model honours it, which is why the
+            // response is also parsed defensively.
+            body.put("response_format", Map.of(
+                    "type", "json_schema",
+                    "json_schema", Map.of("name", "assessment", "strict", true,
+                            "schema", AssessmentJson.schema())));
+        }
+        if (cfg.reasoning()) {
+            body.put("reasoning", Map.of("enabled", true));
+        }
         JsonNode root = openrouter.post().uri("/chat/completions")
                 .bodyValue(body).retrieve().bodyToMono(JsonNode.class).block();
         return AssessmentJson.parse(extractChatCompletionJson(root));
@@ -142,25 +147,77 @@ public class LiveAiAssessmentClient implements AiAssessmentClient {
 
     /** Chat Completions: the structured payload arrives as JSON text in the first choice's message. */
     private JsonNode extractChatCompletionJson(JsonNode root) {
-        if (root != null) {
-            JsonNode message = root.path("choices").path(0).path("message");
-            String text = message.path("content").asText(null);
-            if (text != null && !text.isBlank()) {
-                try {
-                    return new com.fasterxml.jackson.databind.ObjectMapper().readTree(text);
-                } catch (Exception ignored) {
-                    // fall through — a model that ignored the schema is a provider error, not a crash
-                }
-            }
-            // Some models return the object directly rather than as a JSON string.
-            if (message.path("content").isObject()) {
-                return message.path("content");
-            }
-            if (root.has("error")) {
-                log.error("OpenRouter returned an error: {}", root.path("error").toString());
+        if (root == null) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Unexpected assessment response.");
+        }
+        if (root.has("error")) {
+            log.error("OpenRouter returned an error: {}", root.path("error").toString());
+            throw new ApiException(HttpStatus.BAD_GATEWAY,
+                    "The assessment service rejected the request. Please retry or request a professional.");
+        }
+        JsonNode message = root.path("choices").path(0).path("message");
+        // Some models return the object directly rather than as a JSON string.
+        if (message.path("content").isObject()) {
+            return message.path("content");
+        }
+        JsonNode parsed = parseLoosely(message.path("content").asText(null));
+        if (parsed != null) {
+            return parsed;
+        }
+        log.error("Assessment response contained no parsable JSON");
+        throw new ApiException(HttpStatus.BAD_GATEWAY, "Unexpected assessment response.");
+    }
+
+    /**
+     * Pull a JSON object out of a model's reply. Reasoning models routinely narrate before answering
+     * and wrap the payload in a ```json fence, so accepting only a bare JSON body would reject
+     * perfectly good responses. Tries the whole string first, then the first balanced {...} block.
+     */
+    static JsonNode parseLoosely(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String text = raw.trim();
+
+        // Strip a markdown code fence if present.
+        if (text.startsWith("```")) {
+            int firstNewline = text.indexOf('\n');
+            int closing = text.lastIndexOf("```");
+            if (firstNewline > 0 && closing > firstNewline) {
+                text = text.substring(firstNewline + 1, closing).trim();
             }
         }
-        throw new ApiException(HttpStatus.BAD_GATEWAY, "Unexpected assessment response.");
+        try {
+            JsonNode node = mapper.readTree(text);
+            if (node.isObject()) return node;
+        } catch (Exception ignored) {
+            // fall through to scanning for an embedded object
+        }
+
+        // Scan for the first balanced object, ignoring braces inside strings.
+        int start = text.indexOf('{');
+        while (start >= 0) {
+            int depth = 0;
+            boolean inString = false, escaped = false;
+            for (int i = start; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (escaped) { escaped = false; continue; }
+                if (c == '\\') { escaped = true; continue; }
+                if (c == '"') { inString = !inString; continue; }
+                if (inString) continue;
+                if (c == '{') depth++;
+                else if (c == '}' && --depth == 0) {
+                    try {
+                        JsonNode node = mapper.readTree(text.substring(start, i + 1));
+                        if (node.isObject() && node.size() > 0) return node;
+                    } catch (Exception ignored) {
+                        // not valid — try the next candidate
+                    }
+                    break;
+                }
+            }
+            start = text.indexOf('{', start + 1);
+        }
+        return null;
     }
 
     /** Responses API: find the first output_text content node and parse its JSON text. */

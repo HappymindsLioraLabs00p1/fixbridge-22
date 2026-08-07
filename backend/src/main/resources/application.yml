@@ -81,6 +81,11 @@ fixbridge:
     # OpenRouter attributes requests to your app via these (optional but recommended).
     app-url: ${AI_APP_URL:https://fixbridge.example.com}
     app-title: ${AI_APP_TITLE:FixBridge}
+    # Ask the model to conform to our JSON schema. Disable only if a model rejects the parameter —
+    # the response is parsed defensively either way.
+    structured-outputs: ${AI_STRUCTURED_OUTPUTS:true}
+    # Only meaningful for reasoning models (e.g. the :reasoning variants on OpenRouter).
+    reasoning: ${AI_REASONING:false}
     # when true (frontend-first phase), the AI + payment clients return deterministic stubs
     stub-mode: ${INTEGRATIONS_STUB_MODE:true}
   stripe:

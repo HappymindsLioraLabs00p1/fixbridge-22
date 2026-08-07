@@ -36,7 +36,12 @@ public record FixBridgeProperties(
      * models, so its model names are namespaced (e.g. {@code anthropic/claude-sonnet-4}).
      */
     public record Ai(String provider, Provider openai, Provider claude, Provider openrouter,
-                     String appUrl, String appTitle, boolean stubMode) {
+                     String appUrl, String appTitle,
+                     /** Ask the model to conform to our JSON schema. Turn off for models that reject it. */
+                     boolean structuredOutputs,
+                     /** Send reasoning:{enabled:true} — only meaningful for reasoning models. */
+                     boolean reasoning,
+                     boolean stubMode) {
         public record Provider(String baseUrl, String apiKey, String model) {}
     }
 
