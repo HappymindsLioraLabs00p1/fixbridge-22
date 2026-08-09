@@ -13,6 +13,17 @@ spring:
     url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}${DB_PARAMS:}}
     username: ${DB_USER:fixbridge}
     password: ${DB_PASSWORD:fixbridge}
+    hikari:
+      # Concurrent sign-ins each need a connection. Too few and requests queue behind the pool;
+      # too many and a small managed Postgres refuses connections outright. Hosted free tiers
+      # typically cap around 20-25 total, so leave headroom for migrations and any other client.
+      maximum-pool-size: ${DB_POOL_MAX:12}
+      minimum-idle: ${DB_POOL_MIN:2}
+      # Fail fast rather than letting callers hang when the pool is saturated.
+      connection-timeout: 10000
+      # Recycle below typical provider idle timeouts so we never hand out a dead connection.
+      max-lifetime: 900000
+      idle-timeout: 300000
   jpa:
     hibernate:
       ddl-auto: none              # schema is owned by Flyway; Hibernate never manages or validates DDL

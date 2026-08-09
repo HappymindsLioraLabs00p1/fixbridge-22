@@ -41,8 +41,13 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             "/api/auth/forgot-password", "/api/auth/reset-password",
             "/api/auth/change-password");
 
-    private static final int MAX_PER_IP = 20;
-    private static final int MAX_PER_ACCOUNT = 8;
+    /**
+     * Only FAILED attempts count. Someone signing in successfully — repeatedly, from a shared office
+     * or a mobile carrier's NAT where hundreds of users share one address — is not an attack, and an
+     * earlier version that counted every request locked out exactly those legitimate users.
+     */
+    private static final int MAX_FAILURES_PER_IP = 60;
+    private static final int MAX_FAILURES_PER_ACCOUNT = 8;
     private static final Duration WINDOW = Duration.ofMinutes(5);
 
     private final Map<String, Counter> counters = new ConcurrentHashMap<>();
@@ -66,35 +71,51 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         sweepIfStale();
 
         String ip = clientIp(request);
-        if (exceeded("ip:" + ip + ":" + path, MAX_PER_IP)) {
-            log.warn("Rate limit hit for {} from {}", path, ip);
+        // Buffer the body so the account can be identified here AND still read by the controller.
+        HttpServletRequest downstream = new CachedBodyRequestWrapper(request);
+        String account = accountFromBody(downstream);
+
+        // Block only once this IP or account has already accumulated failures in the window.
+        if (overLimit("ip:" + ip, MAX_FAILURES_PER_IP)
+                || (account != null && overLimit("acct:" + account, MAX_FAILURES_PER_ACCOUNT))) {
+            log.warn("Blocking {} from {} — too many recent failures", path, ip);
             reject(response);
             return;
         }
 
-        // Buffer the body so the account can be identified here AND still read by the controller.
-        HttpServletRequest downstream = new CachedBodyRequestWrapper(request);
-
-        // Sign-in also gets a per-account limit, so one account can't be ground down from many IPs.
-        if (path.equals("/api/auth/login")) {
-            String account = accountFromBody(downstream);
-            if (account != null && exceeded("acct:" + account, MAX_PER_ACCOUNT)) {
-                log.warn("Rate limit hit for account {}", account);
-                reject(response);
-                return;
-            }
-        }
         chain.doFilter(downstream, response);
+
+        // Count the attempt only if it failed. 401/400 are wrong credentials or a bad token;
+        // anything else (including a successful sign-in) leaves the counters untouched.
+        int status = response.getStatus();
+        if (status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.BAD_REQUEST.value()) {
+            recordFailure("ip:" + ip);
+            if (account != null) recordFailure("acct:" + account);
+        }
     }
 
-    private boolean exceeded(String key, int max) {
+    /** True when this key has already exceeded its failure budget for the current window. */
+    private boolean overLimit(String key, int max) {
+        Counter c = counters.get(key);
+        if (c == null) return false;
+        synchronized (c) {
+            if (Duration.between(c.windowStart, Instant.now()).compareTo(WINDOW) > 0) {
+                c.windowStart = Instant.now();
+                c.hits.set(0);
+                return false;
+            }
+            return c.hits.get() >= max;
+        }
+    }
+
+    private void recordFailure(String key) {
         Counter c = counters.computeIfAbsent(key, k -> new Counter());
         synchronized (c) {
             if (Duration.between(c.windowStart, Instant.now()).compareTo(WINDOW) > 0) {
                 c.windowStart = Instant.now();
                 c.hits.set(0);
             }
-            return c.hits.incrementAndGet() > max;
+            c.hits.incrementAndGet();
         }
     }
 
