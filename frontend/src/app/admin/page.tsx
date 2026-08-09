@@ -88,7 +88,12 @@ function AdminJobCard({ job }: { job: AdminJob }) {
             <JobStatusBadge status={job.status} />
           </div>
         </div>
-        <CardDescription className="font-mono text-xs">{job.jobId}</CardDescription>
+        {/* An internal reference: useful when someone quotes a job id in support, but it costs a
+            whole line on a phone. Shortened on small screens, full on desktop. */}
+        <CardDescription className="font-mono text-xs" title={job.jobId}>
+          <span className="sm:hidden">{job.jobId.slice(0, 8)}</span>
+          <span className="hidden sm:inline">{job.jobId}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-3 text-sm">
