@@ -1,0 +1,610 @@
+<title>FixBridge — How it was built, and where it runs</title>
+<style>
+  :root {
+    --navy:   #0b2447;
+    --coral:  #ff4d1c;
+    --ink:    #12161d;
+    --paper:  #f6f4f0;
+    --card:   #fffefc;
+    --slate:  #5c6672;
+    --line:   #ddd7cf;
+    --good:   #12734a;
+    --warn:   #a35a06;
+    --stop:   #a3231b;
+    --panel-bg: #0b2447;
+    --panel-fg: #e8eef8;
+    --panel-dim:#8fa5c4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --navy: #cfe0f7; --coral: #ff7a52; --ink: #e9ecf1; --paper: #0d1117;
+      --card: #151b24; --slate: #97a2b0; --line: #26303d;
+      --good: #4ade80; --warn: #fbbf24; --stop: #f87171;
+      --panel-bg: #101926; --panel-fg: #e9eff8; --panel-dim: #7f94b3;
+    }
+  }
+  :root[data-theme="dark"] {
+    --navy: #cfe0f7; --coral: #ff7a52; --ink: #e9ecf1; --paper: #0d1117;
+    --card: #151b24; --slate: #97a2b0; --line: #26303d;
+    --good: #4ade80; --warn: #fbbf24; --stop: #f87171;
+    --panel-bg: #101926; --panel-fg: #e9eff8; --panel-dim: #7f94b3;
+  }
+  :root[data-theme="light"] {
+    --navy: #0b2447; --coral: #ff4d1c; --ink: #12161d; --paper: #f6f4f0;
+    --card: #fffefc; --slate: #5c6672; --line: #ddd7cf;
+    --good: #12734a; --warn: #a35a06; --stop: #a3231b;
+    --panel-bg: #0b2447; --panel-fg: #e8eef8; --panel-dim: #8fa5c4;
+  }
+
+  * { box-sizing: border-box; }
+
+  .doc {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 0 0 80px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  .prose { max-width: 68ch; }
+
+  /* ---- masthead ---- */
+  .mast { padding: 56px 0 32px; border-bottom: 2px solid var(--ink); }
+  .mark {
+    display: inline-block; background: var(--navy); color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 700; font-size: 12px; line-height: 1.15; letter-spacing: .06em;
+    padding: 7px 9px; border-radius: 3px; margin-bottom: 18px;
+  }
+  :root[data-theme="dark"] .mark, .mark { }
+  @media (prefers-color-scheme: dark) { .mark { color: #0d1117; } }
+  :root[data-theme="dark"] .mark { color: #0d1117; }
+  :root[data-theme="light"] .mark { color: #fff; }
+  .mark b { color: var(--coral); }
+  h1 {
+    margin: 0; font-size: clamp(30px, 4.6vw, 46px); line-height: 1.02;
+    letter-spacing: -0.03em; font-weight: 800; text-wrap: balance;
+  }
+  .standfirst { margin: 14px 0 0; font-size: 17px; color: var(--slate); max-width: 60ch; }
+
+  /* ---- sections ---- */
+  section { padding: 44px 0; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--coral); margin: 0 0 10px;
+  }
+  h2 {
+    margin: 0 0 14px; font-size: clamp(21px, 2.6vw, 27px); line-height: 1.15;
+    letter-spacing: -0.02em; font-weight: 750; text-wrap: balance;
+  }
+  h3 { margin: 28px 0 8px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  p { margin: 0 0 14px; }
+  a { color: var(--coral); }
+
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .86em;
+  }
+  code { background: color-mix(in srgb, var(--slate) 12%, transparent); padding: 1px 5px; border-radius: 3px; }
+
+  /* ---- stat strip ---- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 1px;
+           background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .stat { background: var(--card); padding: 14px 16px; }
+  .stat .n { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat .k { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: .12em;
+             text-transform: uppercase; color: var(--slate); margin-top: 2px; }
+
+  /* ---- blueprint panel for diagrams ---- */
+  figure { margin: 22px 0 0; }
+  .panel {
+    background: var(--panel-bg); color: var(--panel-fg);
+    border-radius: 8px; padding: 24px 20px 18px; overflow-x: auto;
+  }
+  .panel svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+  figcaption { margin-top: 10px; font-size: 13.5px; color: var(--slate); max-width: 66ch; }
+
+  /* ---- status chain ---- */
+  .chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 18px 0 6px; }
+  .st {
+    font-family: ui-monospace, monospace; font-size: 11.5px;
+    border: 1px solid var(--line); background: var(--card);
+    padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  }
+  .st.gate { border-color: var(--coral); color: var(--coral); font-weight: 700; }
+  .st.end  { border-color: var(--good); color: var(--good); font-weight: 700; }
+  .arw { color: var(--slate); font-size: 12px; }
+
+  /* ---- tables ---- */
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--card); margin-top: 18px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+  th { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line);
+       font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: .12em;
+       text-transform: uppercase; color: var(--slate); font-weight: 700; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---- phase list ---- */
+  ol.phases { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 1px;
+              background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  ol.phases li { background: var(--card); padding: 11px 16px; display: grid;
+                 grid-template-columns: 34px 1fr auto; gap: 12px; align-items: baseline; font-size: 14.5px; }
+  ol.phases .i { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--slate); }
+  ol.phases .tag { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--good); }
+
+  ul.plain { margin: 8px 0 0; padding-left: 18px; }
+  ul.plain li { margin-bottom: 6px; }
+
+  .note {
+    border-left: 3px solid var(--coral); background: var(--card);
+    padding: 14px 18px; border-radius: 0 6px 6px 0; margin-top: 20px; font-size: 15px;
+  }
+  .note strong { font-weight: 700; }
+
+  .pill { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 7px; border-radius: 999px; font-weight: 700; }
+  .pill.y { color: var(--good);  background: color-mix(in srgb, var(--good) 14%, transparent); }
+  .pill.n { color: var(--stop);  background: color-mix(in srgb, var(--stop) 14%, transparent); }
+  .pill.w { color: var(--warn);  background: color-mix(in srgb, var(--warn) 16%, transparent); }
+</style>
+
+<div class="doc">
+<div class="wrap">
+
+  <header class="mast">
+    <div class="mark">FIX<br><b>BRIDGE AI</b></div>
+    <h1>How FixBridge was built, and where every piece runs</h1>
+    <p class="standfirst">
+      A property-maintenance marketplace: customers report a fault, AI triages it, vetted contractors
+      bid a confidential net price, and the platform quotes the customer a retail price. This traces
+      the code from repository to running service.
+    </p>
+  </header>
+
+  <!-- ─────────────  AT A GLANCE  ───────────── -->
+  <section>
+    <p class="eyebrow">At a glance</p>
+    <div class="stats">
+      <div class="stat"><div class="n">30+</div><div class="k">Commits</div></div>
+      <div class="stat"><div class="n">32</div><div class="k">Tests green</div></div>
+      <div class="stat"><div class="n">19</div><div class="k">Frontend routes</div></div>
+      <div class="stat"><div class="n">6</div><div class="k">DB migrations</div></div>
+      <div class="stat"><div class="n">3</div><div class="k">Roles</div></div>
+      <div class="stat"><div class="n">3</div><div class="k">Cloud services</div></div>
+    </div>
+  </section>
+
+  <!-- ─────────────  SYSTEM DESIGN  ───────────── -->
+  <section>
+    <p class="eyebrow">System design · where it runs</p>
+    <h2>Three services, each doing the one thing it is good at</h2>
+    <div class="prose">
+      <p>
+        The browser only ever talks to one origin — the Netlify site. Everything under
+        <code>/api/*</code> is rewritten server-side to the backend, so there is no CORS negotiation
+        in the browser and no mixed-content problem. That single hop is the reason sign-in works at
+        all, and it is where two days of debugging went.
+      </p>
+    </div>
+
+    <figure>
+      <div class="panel">
+        <svg viewBox="0 0 900 300" role="img"
+             aria-label="Request path: browser to Netlify, which rewrites slash-api requests to the Render backend, which queries the Neon Postgres database.">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+            </marker>
+            <marker id="arC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,5 0,10" fill="#ff7a52"/>
+            </marker>
+          </defs>
+
+          <!-- boxes -->
+          <g fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="14"  y="86" width="132" height="74" rx="5"/>
+            <rect x="238" y="86" width="176" height="74" rx="5"/>
+            <rect x="506" y="86" width="176" height="74" rx="5"/>
+            <rect x="762" y="86" width="124" height="74" rx="5"/>
+          </g>
+
+          <g font-family="ui-monospace, monospace" font-size="12" fill="currentColor" text-anchor="middle">
+            <text x="80"  y="116" font-weight="700">Browser</text>
+            <text x="326" y="112" font-weight="700">Netlify</text>
+            <text x="594" y="112" font-weight="700">Render</text>
+            <text x="824" y="112" font-weight="700">Neon</text>
+          </g>
+          <g font-family="ui-monospace, monospace" font-size="10.5" fill="#8fa5c4" text-anchor="middle">
+            <text x="80"  y="136">customer ·</text>
+            <text x="80"  y="150">admin · trade</text>
+            <text x="326" y="130">Next.js 15 UI</text>
+            <text x="326" y="146">+ /api rewrite</text>
+            <text x="594" y="130">Spring Boot 3</text>
+            <text x="594" y="146">Java 21 · Docker</text>
+            <text x="824" y="130">PostgreSQL</text>
+            <text x="824" y="146">6 migrations</text>
+          </g>
+
+          <!-- arrows -->
+          <g stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)">
+            <line x1="146" y1="123" x2="232" y2="123"/>
+          </g>
+          <g stroke="#ff7a52" stroke-width="2" marker-end="url(#arC)">
+            <line x1="414" y1="123" x2="500" y2="123"/>
+          </g>
+          <g stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)">
+            <line x1="682" y1="123" x2="756" y2="123"/>
+          </g>
+
+          <!-- arrow labels -->
+          <g font-family="ui-monospace, monospace" font-size="10" fill="currentColor" text-anchor="middle">
+            <text x="189" y="112">https</text>
+          </g>
+          <g font-family="ui-monospace, monospace" font-size="10" fill="#ff7a52" text-anchor="middle">
+            <text x="457" y="104">rewrite</text>
+            <text x="457" y="116">/api/*</text>
+          </g>
+          <g font-family="ui-monospace, monospace" font-size="10" fill="currentColor" text-anchor="middle">
+            <text x="719" y="112">JDBC</text>
+            <text x="719" y="146">sslmode</text>
+          </g>
+
+          <!-- what each holds -->
+          <g stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".45">
+            <line x1="326" y1="160" x2="326" y2="196"/>
+            <line x1="594" y1="160" x2="594" y2="196"/>
+            <line x1="824" y1="160" x2="824" y2="196"/>
+          </g>
+          <g font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">
+            <text x="326" y="212">pages, assets,</text>
+            <text x="326" y="226">BACKEND_ORIGIN</text>
+            <text x="594" y="212">pricing engine,</text>
+            <text x="594" y="226">auth, money loop</text>
+            <text x="824" y="212">every row of</text>
+            <text x="824" y="226">business data</text>
+          </g>
+
+          <!-- boundary note -->
+          <g font-family="ui-monospace, monospace" font-size="10.5" fill="#ff7a52">
+            <text x="14" y="272">The browser never learns the backend URL — one origin, no CORS, no mixed content.</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        The request path. The coral hop is server-side: Next.js rewrites <code>/api/*</code> to the
+        backend, so the browser only ever sees the Netlify origin.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ─────────────  THE MECHANISM  ───────────── -->
+  <section>
+    <p class="eyebrow">The core mechanism</p>
+    <h2>Two prices, one of which nobody outside the platform may see</h2>
+    <div class="prose">
+      <p>
+        This is the product. A contractor bids a <strong>net</strong> price they want to be paid. A
+        server-side pricing engine — never the AI — converts that into the <strong>retail</strong>
+        price the customer is quoted. The difference is the platform's margin, and the whole system
+        is built so that number cannot leak.
+      </p>
+    </div>
+
+    <figure>
+      <div class="panel">
+        <svg viewBox="0 0 900 340" role="img"
+             aria-label="A contractor's net bid of 530 dollars passes through the server-side pricing engine and becomes a retail price of 908 dollars 88 to the customer; the 378 dollar 88 margin is visible only to the admin.">
+          <defs>
+            <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- contractor side -->
+          <rect x="14" y="112" width="196" height="92" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="112" y="140" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="currentColor" text-anchor="middle">CONTRACTOR</text>
+          <text x="112" y="170" font-family="ui-monospace, monospace" font-size="21" font-weight="700" fill="currentColor" text-anchor="middle">$530.00</text>
+          <text x="112" y="189" font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">confidential net bid</text>
+
+          <!-- engine -->
+          <rect x="326" y="100" width="216" height="116" rx="5" fill="none" stroke="#ff7a52" stroke-width="2"/>
+          <text x="434" y="128" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="#ff7a52" text-anchor="middle">PRICING ENGINE</text>
+          <text x="434" y="150" font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">server-side · deterministic</text>
+          <text x="434" y="172" font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">margin · risk reserve</text>
+          <text x="434" y="188" font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">fees · min-profit floor</text>
+          <text x="434" y="206" font-family="ui-monospace, monospace" font-size="10" fill="#ff7a52" text-anchor="middle">the AI never sets a price</text>
+
+          <!-- customer side -->
+          <rect x="658" y="112" width="228" height="92" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="772" y="140" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="currentColor" text-anchor="middle">CUSTOMER</text>
+          <text x="772" y="170" font-family="ui-monospace, monospace" font-size="21" font-weight="700" fill="currentColor" text-anchor="middle">$908.88</text>
+          <text x="772" y="189" font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">retail price quoted</text>
+
+          <!-- arrows -->
+          <g stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)">
+            <line x1="210" y1="158" x2="320" y2="158"/>
+            <line x1="542" y1="158" x2="652" y2="158"/>
+          </g>
+
+          <!-- admin band -->
+          <rect x="326" y="248" width="216" height="60" rx="5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="434" y="272" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="currentColor" text-anchor="middle">ADMIN ONLY</text>
+          <text x="434" y="294" font-family="ui-monospace, monospace" font-size="14" font-weight="700" fill="#ff7a52" text-anchor="middle">margin $378.88</text>
+          <g stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".5">
+            <line x1="434" y1="216" x2="434" y2="246"/>
+          </g>
+
+          <!-- confidentiality rails -->
+          <g stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity=".45">
+            <line x1="112" y1="212" x2="112" y2="264"/>
+            <line x1="772" y1="212" x2="772" y2="264"/>
+          </g>
+          <text x="112" y="282" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">never sees retail</text>
+          <text x="112" y="296" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">or the address</text>
+          <text x="772" y="282" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">never sees net</text>
+          <text x="772" y="296" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">or the margin</text>
+
+          <text x="14" y="40" font-family="ui-monospace, monospace" font-size="11" fill="#8fa5c4">A REAL JOB FROM THE LIVE DATABASE</text>
+          <line x1="14" y1="54" x2="886" y2="54" stroke="currentColor" stroke-width="1" opacity=".3"/>
+        </svg>
+      </div>
+      <figcaption>
+        Numbers taken from a job that actually ran end to end in production. Remove the engine and the
+        business has no revenue model; leak the margin and it has no suppliers.
+      </figcaption>
+    </figure>
+
+    <h3>The job lifecycle</h3>
+    <div class="chain">
+      <span class="st">reported</span><span class="arw">→</span>
+      <span class="st">awaiting_service_payment</span><span class="arw">→</span>
+      <span class="st">awaiting_contractor</span><span class="arw">→</span>
+      <span class="st">bid_received</span><span class="arw">→</span>
+      <span class="st">proposal_sent</span><span class="arw">→</span>
+      <span class="st">scheduled</span><span class="arw">→</span>
+      <span class="st">work_completed</span><span class="arw">→</span>
+      <span class="st gate">customer_review_pending</span><span class="arw">→</span>
+      <span class="st">admin_review_pending</span><span class="arw">→</span>
+      <span class="st end">paid_out</span>
+    </div>
+    <p style="font-size:14px;color:var(--slate);margin-top:6px">
+      The coral state is a hard gate: no money reaches a contractor until the customer confirms the
+      work, and confirmation is refused while a change order is still outstanding.
+    </p>
+  </section>
+
+  <!-- ─────────────  STACK  ───────────── -->
+  <section>
+    <p class="eyebrow">The three layers</p>
+    <h2>Frontend, backend, database</h2>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Built with</th><th>What lives there</th><th>Runs on</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Frontend</strong></td>
+            <td class="mono">Next.js 15 · React 19<br>TypeScript · Tailwind<br>React Query · Zustand</td>
+            <td>19 routes — marketing site, auth, and one dashboard per role. Renders state; holds no
+                business rules and never computes a price.</td>
+            <td class="mono">Netlify</td>
+          </tr>
+          <tr>
+            <td><strong>Backend</strong></td>
+            <td class="mono">Java 21 · Spring Boot 3<br>Spring Security · JWT<br>JPA · Flyway · Docker</td>
+            <td>Every rule: pricing engine, role permissions, the money loop, compliance gating,
+                Stripe orchestration, AI triage, audit trail.</td>
+            <td class="mono">Render</td>
+          </tr>
+          <tr>
+            <td><strong>Database</strong></td>
+            <td class="mono">PostgreSQL<br>6 Flyway migrations<br>native enums</td>
+            <td>Jobs, bids, proposals, payments, transfers, refunds, disputes, contractor documents,
+                completion reports, audit log.</td>
+            <td class="mono">Neon <span class="pill w">migrating</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Database migrations, in the order they were written</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th class="mono">Version</th><th>Adds</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">V1</td><td>Core schema — profiles, roles, properties, jobs, bids, proposals, payments, transfers</td></tr>
+          <tr><td class="mono">V2</td><td>Change orders and job media</td></tr>
+          <tr><td class="mono">V3</td><td>Subscriptions and the notification log</td></tr>
+          <tr><td class="mono">V4</td><td>Completion reports — invoice, warranty, sign-off timestamp</td></tr>
+          <tr><td class="mono">V5</td><td>Payout holds</td></tr>
+          <tr><td class="mono">V6</td><td>Auth tokens for password reset and email verification</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─────────────  BUILD SEQUENCE  ───────────── -->
+  <section>
+    <p class="eyebrow">Build sequence</p>
+    <h2>What was built, in order</h2>
+    <div class="prose">
+      <p>
+        The first fifteen steps were the planned build. Everything after came from auditing the
+        result against the written requirements and finding the gaps.
+      </p>
+    </div>
+
+    <ol class="phases">
+      <li><span class="i">01</span><span>Requirements specification</span><span class="tag">done</span></li>
+      <li><span class="i">02</span><span>Architecture and system design</span><span class="tag">done</span></li>
+      <li><span class="i">03</span><span>Database schema and migrations</span><span class="tag">done</span></li>
+      <li><span class="i">04</span><span>Auth — registration, JWT, refresh, role guards</span><span class="tag">done</span></li>
+      <li><span class="i">05</span><span>AI assessment engine with schema-validated output</span><span class="tag">done</span></li>
+      <li><span class="i">06</span><span>Server-side pricing engine</span><span class="tag">done</span></li>
+      <li><span class="i">07</span><span>Job lifecycle and dispatch</span><span class="tag">done</span></li>
+      <li><span class="i">08</span><span>Stripe payments and Connect payouts</span><span class="tag">done</span></li>
+      <li><span class="i">09</span><span>Frontend UI for all three roles</span><span class="tag">done</span></li>
+      <li><span class="i">10</span><span>Change orders</span><span class="tag">done</span></li>
+      <li><span class="i">11</span><span>Notifications — SMS and email</span><span class="tag">done</span></li>
+      <li><span class="i">12</span><span>Media upload via signed URLs</span><span class="tag">done</span></li>
+      <li><span class="i">13</span><span>Subscriptions</span><span class="tag">done</span></li>
+      <li><span class="i">14</span><span>Audit trail</span><span class="tag">done</span></li>
+      <li><span class="i">15</span><span>Infrastructure — Docker, Terraform, CI</span><span class="tag">done</span></li>
+      <li><span class="i">16</span><span>Admin pick-lists — replaced pasted UUIDs with real dropdowns</span><span class="tag">gap fix</span></li>
+      <li><span class="i">17</span><span>Completion proof and customer sign-off before payout</span><span class="tag">gap fix</span></li>
+      <li><span class="i">18</span><span>Refunds, disputes, payout holds</span><span class="tag">gap fix</span></li>
+      <li><span class="i">19</span><span>Password reset and email verification</span><span class="tag">gap fix</span></li>
+      <li><span class="i">20</span><span>Contractor licence and insurance gating</span><span class="tag">added</span></li>
+      <li><span class="i">21</span><span>Admin reporting — revenue, margin, conversion</span><span class="tag">added</span></li>
+      <li><span class="i">22</span><span>OpenRouter as an AI provider</span><span class="tag">added</span></li>
+      <li><span class="i">23</span><span>Deployment — Netlify, Render, Neon</span><span class="tag">live</span></li>
+    </ol>
+  </section>
+
+  <!-- ─────────────  CODE & DEPLOY  ───────────── -->
+  <section>
+    <p class="eyebrow">Where the code is · where it deploys</p>
+    <h2>One repository, two automatic deployments</h2>
+
+    <figure>
+      <div class="panel">
+        <svg viewBox="0 0 900 250" role="img"
+             aria-label="A push to the main branch on GitHub triggers Netlify to build the frontend and Render to build the backend, independently and in parallel.">
+          <defs>
+            <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <rect x="14" y="94" width="150" height="66" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="89" y="122" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="currentColor" text-anchor="middle">your Mac</text>
+          <text x="89" y="140" font-family="ui-monospace, monospace" font-size="10" fill="#8fa5c4" text-anchor="middle">git push</text>
+
+          <rect x="272" y="94" width="196" height="66" rx="5" fill="none" stroke="#ff7a52" stroke-width="2"/>
+          <text x="370" y="118" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="#ff7a52" text-anchor="middle">GitHub · main</text>
+          <text x="370" y="136" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">fixbridge-22</text>
+          <text x="370" y="150" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">single source of truth</text>
+
+          <rect x="606" y="34" width="280" height="66" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="746" y="58" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="currentColor" text-anchor="middle">Netlify</text>
+          <text x="746" y="76" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">builds frontend/ → static + edge</text>
+          <text x="746" y="90" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">the URL people visit</text>
+
+          <rect x="606" y="154" width="280" height="66" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="746" y="178" font-family="ui-monospace, monospace" font-size="11.5" font-weight="700" fill="currentColor" text-anchor="middle">Render</text>
+          <text x="746" y="196" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">builds backend/Dockerfile</text>
+          <text x="746" y="210" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">runs migrations on boot</text>
+
+          <g stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)">
+            <line x1="164" y1="127" x2="266" y2="127"/>
+          </g>
+          <path d="M468 118 L536 118 L536 67 L600 67" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)"/>
+          <path d="M468 136 L536 136 L536 187 L600 187" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)"/>
+
+          <text x="552" y="58" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">auto</text>
+          <text x="552" y="204" font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa5c4" text-anchor="middle">auto</text>
+        </svg>
+      </div>
+      <figcaption>
+        One push updates both halves. The two builds are independent — a frontend change never
+        rebuilds the Java service, and vice versa.
+      </figcaption>
+    </figure>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>What</th><th>Where</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td>Source code</td><td class="mono">github.com/HappymindsLioraLabs00p1/fixbridge-22 · branch main</td><td><span class="pill y">pushed</span></td></tr>
+          <tr><td>Website + app UI</td><td class="mono">iridescent-valkyrie-2e9de2.netlify.app</td><td><span class="pill y">live</span></td></tr>
+          <tr><td>API + business logic</td><td class="mono">fixbridge-backend.onrender.com</td><td><span class="pill y">live</span></td></tr>
+          <tr><td>Database</td><td class="mono">Neon PostgreSQL</td><td><span class="pill w">switching over</span></td></tr>
+          <tr><td>Visitor access</td><td class="mono">Netlify SSO still enabled</td><td><span class="pill n">private</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Notable commits</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th class="mono">SHA</th><th>What it changed</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">61de1de</td><td>Admin pick-lists replaced hand-pasted UUIDs</td></tr>
+          <tr><td class="mono">a432e49</td><td>Refunds, disputes and payout holds</td></tr>
+          <tr><td class="mono">db8c702</td><td>Password reset and email verification</td></tr>
+          <tr><td class="mono">1a0211e</td><td>Licence and insurance gate dispatch</td></tr>
+          <tr><td class="mono">ce1f7d4</td><td>Admin reporting — revenue, gross profit, conversion</td></tr>
+          <tr><td class="mono">f36cf10</td><td>OpenRouter provider support</td></tr>
+          <tr><td class="mono">5bb98a3</td><td>Split the stub switch per integration</td></tr>
+          <tr><td class="mono">2093d6b</td><td>Sized the JVM to stop a container crash loop</td></tr>
+          <tr><td class="mono">e82b20e</td><td>Stopped the blueprint overwriting the database connection</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─────────────  WEBSITE OR APP  ───────────── -->
+  <section>
+    <p class="eyebrow">The question you asked</p>
+    <h2>Is this a website, or an app?</h2>
+    <div class="prose">
+      <p>
+        <strong>It is one responsive web application that behaves as both — and it is not a native
+        mobile app.</strong> The same URL serves the public marketing site and the signed-in product;
+        which one you get depends on whether you are logged in and what role you hold.
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Surface</th><th>Route</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Marketing website</td><td class="mono">/</td><td><span class="pill y">built</span></td></tr>
+          <tr><td>Customer app</td><td class="mono">/customer · /customer/report · /customer/jobs/[id]</td><td><span class="pill y">built</span></td></tr>
+          <tr><td>Contractor app</td><td class="mono">/contractor</td><td><span class="pill y">built</span></td></tr>
+          <tr><td>Admin console</td><td class="mono">/admin · /admin/reports · /admin/compliance</td><td><span class="pill y">built</span></td></tr>
+          <tr><td>Works on phones</td><td class="mono">responsive layout</td><td><span class="pill y">yes</span></td></tr>
+          <tr><td>Installable / offline (PWA)</td><td class="mono">no service worker or manifest</td><td><span class="pill n">not built</span></td></tr>
+          <tr><td>iOS / Android native app</td><td class="mono">no React Native or Swift project</td><td><span class="pill n">not built</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>If a real mobile app is wanted</strong>, the backend is already the right shape for it —
+      it is a plain JSON API with JWT auth, so a React Native or native client would consume the same
+      endpoints with no server changes. The realistic middle step is making the existing site
+      installable as a PWA: an icon on the home screen, no app-store review.
+    </div>
+  </section>
+
+  <!-- ─────────────  HONEST STATE  ───────────── -->
+  <section style="border-bottom:none">
+    <p class="eyebrow">Not finished</p>
+    <h2>What is still open</h2>
+    <div class="prose">
+      <ul class="plain">
+        <li><strong>The site is private.</strong> Netlify SSO is still on, so only the account owner
+            can open the link. This is one toggle, and nothing else matters until it is flipped.</li>
+        <li><strong>The database move is mid-flight.</strong> Render's blueprint was overwriting the
+            connection settings; that is fixed in code, but the switch to Neon needs a blueprint sync
+            and the variables set once in the dashboard.</li>
+        <li><strong>Live integrations are unproven.</strong> Stripe, Twilio and Resend have never run
+            against real keys — every one of those paths is exercised only by stubs.</li>
+        <li><strong>Deferred by design:</strong> admin MFA, DIY plans, landlord and agent dashboards,
+            partner referrals, direct-lead mode, property profiles.</li>
+      </ul>
+      <p style="margin-top:18px">
+        A credential was pasted into the working chat during setup. It should be treated as
+        compromised and rotated, regardless of anything else on this page.
+      </p>
+    </div>
+  </section>
+
+</div>
+</div>
