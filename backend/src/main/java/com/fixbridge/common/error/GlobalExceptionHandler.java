@@ -49,6 +49,17 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of(403, "Forbidden", "You are not authorized to access this resource", List.of()));
     }
 
+    /**
+     * An unmatched path is a 404, not a server fault. Without this, every unknown URL — including
+     * ordinary scanner traffic — is reported as a 500 and buries real failures in the logs.
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResource(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiError.of(HttpStatus.NOT_FOUND.value(), "Not Found", "Not found", List.of()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex) {
         // Log the real cause server-side; return a generic message to the client.

@@ -36,7 +36,12 @@ server:
     include-stacktrace: never
 
 springdoc:
+  # The API schema describes every endpoint and payload, which is a free map for an attacker.
+  # Off by default; switch on per-environment when you actually want to browse it.
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
   swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
     path: /docs
 
 management:
