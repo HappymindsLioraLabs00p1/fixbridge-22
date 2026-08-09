@@ -18,7 +18,11 @@ export function JobStatusBadge({ status }: { status: JobStatus }) {
   const paidOut = status === "paid_out" || status === "closed";
   const problem = status === "canceled" || status === "refunded" || status === "disputed";
   return (
-    <Badge variant={paidOut ? "success" : problem ? "destructive" : "outline"}>
+    // Never wrap: a two-line chip dominates the row on a phone.
+    <Badge
+      variant={paidOut ? "success" : problem ? "destructive" : "outline"}
+      className="whitespace-nowrap"
+    >
       {status.replaceAll("_", " ")}
     </Badge>
   );

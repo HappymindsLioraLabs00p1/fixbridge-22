@@ -13,6 +13,14 @@ export function MascotAssistant() {
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<"intro" | "corner">("intro");
   const [bubble, setBubble] = useState(false);
+
+  // The greeting is fixed bottom-right, so on a phone it sits over the page's own buttons. Let it
+  // say hello, then retire itself; tapping the mascot brings it back.
+  useEffect(() => {
+    if (!bubble) return;
+    const timer = setTimeout(() => setBubble(false), 6000);
+    return () => clearTimeout(timer);
+  }, [bubble]);
   const spokenOnce = useRef(false);
 
   function speak() {
@@ -119,7 +127,7 @@ export function MascotAssistant() {
         }}
       >
         {bubble && !intro && (
-          <div className="fb-bubble relative max-w-[230px] rounded-2xl border bg-card px-4 py-3 shadow-xl">
+          <div className="fb-bubble relative max-w-[190px] rounded-2xl border bg-card px-4 py-3 shadow-xl sm:max-w-[230px]">
             <p className="font-display text-lg leading-tight">{GREETING}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Tap me — I&apos;ll say hi 👋</p>
             <span className="absolute -bottom-1.5 right-7 h-3 w-3 rotate-45 border-b border-r bg-card" />

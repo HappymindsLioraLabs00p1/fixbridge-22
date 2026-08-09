@@ -14,13 +14,14 @@ export default function CustomerDashboard() {
   return (
     <RequireRole role="customer">
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-        <div className="flex items-center justify-between">
+        {/* Stacks on a phone — side by side the heading wrapped underneath the button. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Your properties &amp; requests</h1>
             <p className="text-sm text-muted-foreground">Report an issue and track it to completion.</p>
           </div>
-          <Link href="/customer/report">
-            <Button>Report an issue</Button>
+          <Link href="/customer/report" className="shrink-0">
+            <Button className="w-full sm:w-auto">Report an issue</Button>
           </Link>
         </div>
         <div className="grid gap-8 lg:grid-cols-2">
