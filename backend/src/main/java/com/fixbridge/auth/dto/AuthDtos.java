@@ -37,6 +37,13 @@ public final class AuthDtos {
 
     public record VerifyEmailRequest(@NotBlank String token) {}
 
+    /** Change your own password while signed in. Requires the current one — a stolen session alone
+     *  must not be enough to lock the real owner out. */
+    public record ChangePasswordRequest(
+            @NotBlank String currentPassword,
+            @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") String newPassword
+    ) {}
+
     /** Deliberately generic so a caller cannot tell whether an account exists. */
     public record MessageResponse(String message) {}
 

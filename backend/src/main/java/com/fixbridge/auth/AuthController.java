@@ -58,6 +58,13 @@ public class AuthController {
         return new AuthDtos.MessageResponse("Your email address is confirmed.");
     }
 
+    /** Change your own password while signed in — no email round-trip needed. */
+    @PostMapping("/change-password")
+    public AuthDtos.MessageResponse changePassword(@Valid @RequestBody AuthDtos.ChangePasswordRequest req) {
+        authTokenService.changePassword(SecurityUtil.currentUser().id(), req.currentPassword(), req.newPassword());
+        return new AuthDtos.MessageResponse("Your password has been changed.");
+    }
+
     @GetMapping("/me")
     public AuthDtos.UserView me() {
         AuthUser user = SecurityUtil.currentUser();

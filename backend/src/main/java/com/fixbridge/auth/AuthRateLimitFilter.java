@@ -38,7 +38,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     /** Endpoints where guessing is the attack. */
     private static final Set<String> GUARDED = Set.of(
             "/api/auth/login", "/api/auth/register",
-            "/api/auth/forgot-password", "/api/auth/reset-password");
+            "/api/auth/forgot-password", "/api/auth/reset-password",
+            "/api/auth/change-password");
 
     private static final int MAX_PER_IP = 20;
     private static final int MAX_PER_ACCOUNT = 8;

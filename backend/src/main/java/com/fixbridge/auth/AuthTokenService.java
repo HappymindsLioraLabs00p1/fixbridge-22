@@ -80,6 +80,24 @@ public class AuthTokenService {
         log.info("Password reset completed for {}", profile.getId());
     }
 
+    /**
+     * Change the password of the signed-in account. The current password is required, so a stolen
+     * access token cannot be used to take the account over permanently.
+     */
+    @Transactional
+    public void changePassword(java.util.UUID userId, String currentPassword, String newPassword) {
+        Profile profile = profiles.findById(userId).orElseThrow(() -> ApiException.notFound("Account"));
+        if (!passwordEncoder.matches(currentPassword, profile.getPasswordHash())) {
+            throw ApiException.badRequest("Your current password is not correct");
+        }
+        if (passwordEncoder.matches(newPassword, profile.getPasswordHash())) {
+            throw ApiException.badRequest("Choose a password you haven't used here before");
+        }
+        profile.setPasswordHash(passwordEncoder.encode(newPassword));
+        profiles.save(profile);
+        log.info("Password changed by {}", profile.getId());
+    }
+
     /** Send (or re-send) an email-verification link. */
     @Transactional
     public void sendVerificationEmail(Profile profile) {

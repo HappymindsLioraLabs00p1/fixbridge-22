@@ -62,7 +62,17 @@ export function SiteHeader() {
                   Activity
                 </Button>
               </Link>
-              <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
+              {/* The email doubles as the way into account settings. */}
+              <Link href="/account" className="hidden sm:inline">
+                <span className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+                  {user.email}
+                </span>
+              </Link>
+              <Link href="/account" className="sm:hidden">
+                <Button variant="ghost" size="sm">
+                  Account
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
