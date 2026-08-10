@@ -3,6 +3,7 @@ package com.fixbridge.ai;
 import com.fixbridge.common.enums.AiUrgency;
 import com.fixbridge.common.enums.Complexity;
 import com.fixbridge.config.FixBridgeProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,8 @@ import java.util.Locale;
  */
 @Component
 @ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "true", matchIfMissing = true)
+// Stand aside when the separate Python service is the configured provider (AI_PROVIDER=python).
+@ConditionalOnExpression("'${fixbridge.ai.provider:openai}' != 'python'")
 public class StubAiAssessmentClient implements AiAssessmentClient {
 
     private static final List<String> DANGER_KEYWORDS = List.of(

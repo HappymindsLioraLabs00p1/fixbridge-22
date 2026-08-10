@@ -15,6 +15,7 @@ public record FixBridgeProperties(
         Brand brand,
         Security security,
         Ai ai,
+        AiService aiService,
         Stripe stripe,
         Storage storage,
         Twilio twilio,
@@ -56,6 +57,9 @@ public record FixBridgeProperties(
             /** Stub payments independently of the other integrations. */
             boolean stubMode
     ) {}
+
+    /** Connection details for the separate Python AI/image service. */
+    public record AiService(String baseUrl, String authToken, String model, long timeoutSeconds) {}
 
     /** Grouping for the SMS/email stub switch so notifications can go live on their own. */
     public record Notifications(boolean stubMode) {}

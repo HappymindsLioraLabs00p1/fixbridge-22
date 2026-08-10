@@ -1,6 +1,7 @@
 package com.fixbridge.ai;
 
 import com.fixbridge.common.enums.AiUrgency;
+import com.fixbridge.common.enums.AssessmentStatus;
 import com.fixbridge.common.enums.Complexity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -75,6 +76,21 @@ public class AiAssessmentEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_json", columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> rawJson;
+
+    // --- Retry state (added for the separate AI service) -----------------------------------
+    /** completed | pending | failed. Lets a job exist while its assessment is still being retried. */
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "assessment_status", nullable = false)
+    private AssessmentStatus status = AssessmentStatus.completed;
+
+    @Column(nullable = false)
+    private int attempts = 1;
+
+    @Column(name = "last_error", columnDefinition = "text")
+    private String lastError;
+
+    @Column(name = "last_attempt_at")
+    private Instant lastAttemptAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

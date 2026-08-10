@@ -5,6 +5,7 @@ import com.fixbridge.common.error.ApiException;
 import com.fixbridge.config.FixBridgeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,8 @@ import java.util.Map;
  */
 @Component
 @ConditionalOnProperty(prefix = "fixbridge.ai", name = "stub-mode", havingValue = "false")
+// Stand aside when the separate Python service is the configured provider (AI_PROVIDER=python).
+@ConditionalOnExpression("'${fixbridge.ai.provider:openai}' != 'python'")
 public class LiveAiAssessmentClient implements AiAssessmentClient {
 
     private static final Logger log = LoggerFactory.getLogger(LiveAiAssessmentClient.class);

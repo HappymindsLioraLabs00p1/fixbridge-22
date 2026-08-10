@@ -107,6 +107,13 @@ fixbridge:
     # Each integration can be stubbed independently, so you can run the AI live while payments
     # stay stubbed. Each falls back to INTEGRATIONS_STUB_MODE, which is the master switch.
     stub-mode: ${AI_STUB_MODE:${INTEGRATIONS_STUB_MODE:true}}
+  # The separate Python AI/image service. Used only when fixbridge.ai.provider=python; the OpenAI,
+  # Claude and stub clients are unaffected.
+  ai-service:
+    base-url: ${AI_SERVICE_URL:http://localhost:8000}
+    auth-token: ${AI_SERVICE_TOKEN:}
+    model: ${AI_SERVICE_MODEL:gpt-4o-mini}
+    timeout-seconds: ${AI_SERVICE_TIMEOUT:60}
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}

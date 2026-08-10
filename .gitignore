@@ -31,3 +31,10 @@ crash.log
 # repository — a backup belongs somewhere private, not in version control.
 backups/
 *fixbridge-backup-*.json
+
+# Python AI service — virtualenv, caches and local secrets never belong in the repository
+fixbridge-ai-service/.venv/
+fixbridge-ai-service/.env
+__pycache__/
+*.py[cod]
+.pytest_cache/

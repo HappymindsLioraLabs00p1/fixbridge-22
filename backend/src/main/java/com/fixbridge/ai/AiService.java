@@ -1,5 +1,6 @@
 package com.fixbridge.ai;
 
+import com.fixbridge.common.enums.AssessmentStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,18 @@ public class AiService {
                 .filter(AiService::isImage)
                 .map(storage::createDownloadUrl)
                 .toList();
-        AssessmentResult result = client.assess(description, imageUrls);
+        AssessmentResult result;
+        try {
+            result = client.assess(description, imageUrls);
+        } catch (PythonAiAssessmentClient.AiServiceUnavailableException e) {
+            // The assessment service is down. Recording the issue matters more than assessing it
+            // immediately — the customer's report is kept and the assessment is retried, rather
+            // than the whole request failing.
+            log.warn("Assessment service unavailable for job {} — storing as pending: {}",
+                    jobId, e.getMessage());
+            savePending(jobId, description, e.getMessage());
+            return AssessmentResult.pending();
+        }
         result = enforceSafety(result);
 
         AiAssessmentEntity entity = new AiAssessmentEntity();
@@ -59,6 +71,33 @@ public class AiService {
         entity.setRawJson(objectMapper.convertValue(result, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
         repository.save(entity);
         return result;
+    }
+
+    /** Record that the job still needs assessing, so a retry can pick it up. */
+    private void savePending(UUID jobId, String description, String error) {
+        AiAssessmentEntity entity = new AiAssessmentEntity();
+        entity.setJobId(jobId);
+        entity.setProvider(client.provider());
+        entity.setModel(client.model());
+        entity.setStatus(AssessmentStatus.pending);
+        entity.setLastError(error);
+        entity.setLastAttemptAt(java.time.Instant.now());
+        entity.setAttempts(1);
+        // Nothing was assessed, so DIY must not be permitted by omission.
+        entity.setProfessionalRequired(true);
+        entity.setSafeDiyAllowed(false);
+        entity.setRawJson(Map.of("pending", true, "description", description));
+        repository.save(entity);
+    }
+
+    /**
+     * Assessments still waiting on the service, oldest first. A scheduled sweep or an admin action
+     * can re-run these; nothing here retries on its own, so a prolonged outage doesn't turn into a
+     * retry storm.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<AiAssessmentEntity> retryable(int limit) {
+        return repository.findRetryable(org.springframework.data.domain.PageRequest.of(0, limit));
     }
 
     private static boolean isImage(String key) {

@@ -20,6 +20,8 @@ public final class TestFixtures {
                 "https://openrouter.ai/api/v1", "", "openai/gpt-4o-mini");
         var ai = new FixBridgeProperties.Ai("openai", openai, claude, openrouter,
                 "https://fixbridge.example.com", "FixBridge", true, false, true);
+        var aiService = new FixBridgeProperties.AiService(
+                "http://localhost:8000", "test-token", "stub-vision-v1", 60);
         var security = new FixBridgeProperties.Security(
                 "test-secret-test-secret-test-secret-1234", 15, 14, "http://localhost:3000");
         var brand = new FixBridgeProperties.Brand("FixBridge", "support@example.com", "example.com", "#1f6feb");
@@ -30,7 +32,7 @@ public final class TestFixtures {
         var resend = new FixBridgeProperties.Resend("", "notifications@example.com");
         var notifications = new FixBridgeProperties.Notifications(true);
         var billing = new FixBridgeProperties.Billing(java.util.Map.of("diy_plus", "price_test"));
-        return new FixBridgeProperties(brand, security, ai, stripe, storage, twilio, resend, notifications, billing);
+        return new FixBridgeProperties(brand, security, ai, aiService, stripe, storage, twilio, resend, notifications, billing);
     }
 
     public static AssessmentResult assessment(String category, AiUrgency urgency, double confidence,
