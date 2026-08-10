@@ -15,6 +15,7 @@ from typing import Dict, List
 
 import structlog
 
+from app.rag.retriever import RagAgent
 from app.schemas.repair import RepairPlan, RepairStep, SafetyAssessment, SafetyLevel
 
 log = structlog.get_logger()
@@ -132,6 +133,11 @@ GENERIC = {
 
 
 class RepairPlanner:
+    def __init__(self, rag: RagAgent | None = None) -> None:
+        # Retrieval is what grounds a plan in FixBridge's own documents rather than a model's
+        # recollection. The curated library remains the fallback when nothing relevant is found.
+        self.rag = rag or RagAgent()
+
     def plan(self, problem: str, category: str, safety: SafetyAssessment) -> RepairPlan:
         # A plan is only ever produced for a SAFE_DIY verdict. Reaching here otherwise is a bug, so
         # fail loudly rather than quietly emitting instructions.
@@ -140,7 +146,14 @@ class RepairPlanner:
 
         entry = LIBRARY.get(category, GENERIC)
         steps: List[RepairStep] = [RepairStep(**s) for s in entry["steps"]]
-        log.info("repair_plan_built", category=category, steps=len(steps))
+
+        # Ground the plan in retrieved documents where we have them. Sources are recorded so a
+        # customer-facing instruction can always be traced to the procedure it came from.
+        grounded = self.rag.retrieve(problem, category=category)
+        sources = grounded.sources if grounded.is_grounded else ["FixBridge approved procedures"]
+
+        log.info("repair_plan_built", category=category, steps=len(steps),
+                 grounded=grounded.is_grounded, sources=len(sources))
         return RepairPlan(
             problem=problem or entry["problem"],
             category=category,
@@ -148,5 +161,5 @@ class RepairPlanner:
             steps=steps,
             estimated_minutes=entry["minutes"],
             stop_conditions=STOP_CONDITIONS,
-            sources=["FixBridge approved procedures"],
+            sources=sources,
         )

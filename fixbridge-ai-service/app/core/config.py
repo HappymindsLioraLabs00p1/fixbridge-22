@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     max_images_per_assessment: int = 4
     download_timeout_seconds: float = 20.0
 
+    # --- Knowledge base (RAG) ------------------------------------------------------------------
+    # When set, retrieval uses PostgreSQL + pgvector; otherwise an in-memory store. The pipeline is
+    # identical either way, so this is a deployment choice rather than a code path.
+    knowledge_database_url: str = ""
+    rag_results: int = 4
+
     # --- Rate limiting -----------------------------------------------------------------------
     rate_limit_per_minute: int = 120
 
