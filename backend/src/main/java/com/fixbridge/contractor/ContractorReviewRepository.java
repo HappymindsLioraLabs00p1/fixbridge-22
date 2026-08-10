@@ -7,4 +7,7 @@ import java.util.UUID;
 
 public interface ContractorReviewRepository extends JpaRepository<ContractorReview, UUID> {
     List<ContractorReview> findByContractorId(UUID contractorId);
+
+    /** Enforces one review per job per customer, so an average can't be moved by one person. */
+    boolean existsByJobIdAndCustomerId(UUID jobId, UUID customerId);
 }

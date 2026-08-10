@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { RequireRole } from "@/components/require-auth";
+import { ContractorMatches } from "@/components/contractor-matches";
 import { uploadFile } from "@/lib/api";
+import { useVoiceInput } from "@/lib/use-voice-input";
 import {
   useSendChatMessage,
   useStartConversation,
@@ -32,6 +34,9 @@ function Assistant() {
 
   const start = useStartConversation();
   const send = useSendChatMessage(conversationId);
+  // Speech fills the box rather than sending on its own — a mis-heard phrase should be correctable
+  // before it goes, and an auto-send would make that impossible.
+  const voice = useVoiceInput();
   const bottom = useRef<HTMLDivElement>(null);
   // React runs effects twice in development. Without this guard that opens two conversations and
   // the second silently replaces the first, so the greeting and the transcript disagree.
@@ -62,6 +67,11 @@ function Assistant() {
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [bubbles, view?.plan]);
+
+  // Speech lands in the composer so it can be read back and edited before sending.
+  useEffect(() => {
+    if (voice.transcript) setDraft(voice.transcript);
+  }, [voice.transcript]);
 
   function submit(text: string, imageKeys: string[] = []) {
     if (!conversationId || (!text.trim() && imageKeys.length === 0)) return;
@@ -147,6 +157,14 @@ function Assistant() {
             {emergency ? "Stop — this needs immediate attention" : "This needs a professional"}
           </p>
           <p className="mt-1 text-sm">{view?.message}</p>
+
+          {/* Who could actually take this. Shown here rather than behind another click — someone
+              just told to stop and call a professional shouldn't have to re-describe the problem
+              on a separate screen to find one. */}
+          <ContractorMatches trade={view?.category ?? "general"} />
+
+          {/* Always present, whatever the match list does. The route to a professional must not
+              depend on matching having loaded. */}
           <Link href="/customer/report" className="mt-3 inline-block">
             <Button>Request a professional</Button>
           </Link>
@@ -211,16 +229,48 @@ function Assistant() {
               <input type="file" accept="image/*" multiple className="hidden"
                      onChange={(e) => sendPhotos(e.target.files)} />
             </label>
+            {/* Only rendered where the browser actually supports recognition — a button that
+                silently does nothing is worse than no button. */}
+            {voice.supported && (
+              <button
+                type="button"
+                onClick={voice.listening ? voice.stop : voice.start}
+                disabled={busy}
+                aria-label={voice.listening ? "Stop recording" : "Describe the problem by voice"}
+                aria-pressed={voice.listening}
+                title={voice.listening ? "Stop recording" : "Speak instead of typing"}
+                className="flex shrink-0 items-center rounded-md border px-3 text-lg disabled:opacity-50"
+                style={
+                  voice.listening
+                    ? { borderColor: "var(--destructive)", color: "var(--destructive)" }
+                    : undefined
+                }
+              >
+                {voice.listening ? "⏹" : "🎤"}
+              </button>
+            )}
             <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={view?.requiresImage ? "Send a photo, or describe it…" : "Describe the problem…"}
+              placeholder={
+                voice.listening
+                  ? "Listening…"
+                  : view?.requiresImage
+                    ? "Send a photo, or describe it…"
+                    : "Describe the problem…"
+              }
               disabled={busy}
             />
             <Button type="submit" disabled={busy || !draft.trim()}>
               Send
             </Button>
           </form>
+
+          {voice.error && (
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              {voice.error}
+            </p>
+          )}
         </div>
       )}
     </div>

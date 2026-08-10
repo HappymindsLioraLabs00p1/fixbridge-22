@@ -347,3 +347,37 @@ export interface VerificationView {
   reason: string;
   nextAction: string;
 }
+
+export interface ContractorMatch {
+  contractorId: string;
+  businessName: string;
+  trade: string;
+  completedJobs: number;
+  /** Null when the contractor has no reviews yet — not the same as a zero rating. */
+  rating: number | null;
+  reviewCount: number;
+  /** Null when either side has no known location. */
+  distanceMiles: number | null;
+  minTripChargeCents: number | null;
+  travelRadiusMiles: number | null;
+  score: number;
+  availability: "AVAILABLE" | "OUT_OF_RANGE";
+}
+
+export interface MatchResult {
+  requiredTrade: string;
+  matches: ContractorMatch[];
+  /** Populated only when nothing matched. */
+  reason: string | null;
+  /** False when no contractor declared the trade, so results are broader than asked for. */
+  tradeFilterApplied: boolean;
+}
+
+export interface ReviewView {
+  id: string;
+  contractorId: string;
+  jobId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}

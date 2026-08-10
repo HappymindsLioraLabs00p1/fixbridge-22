@@ -1,5 +1,11 @@
 package com.fixbridge.contractor.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,4 +45,23 @@ public final class MatchDtos {
             String reason,
             boolean tradeFilterApplied
     ) {}
+
+    /** A rating being submitted. The contractor is derived from the job rather than supplied, so a
+     *  caller cannot rate someone who never worked for them. */
+    public record SubmitReviewRequest(
+            @NotNull UUID jobId,
+            @Min(1) @Max(5) int rating,
+            @Size(max = 2000) String comment
+    ) {}
+
+    public record ReviewView(
+            UUID id,
+            UUID contractorId,
+            UUID jobId,
+            int rating,
+            String comment,
+            Instant createdAt
+    ) {}
+
+    public record ReviewEligibility(UUID jobId, boolean canReview) {}
 }

@@ -8,6 +8,8 @@ import type {
   AdminJob,
   AdminProposal,
   BidOption,
+  MatchResult,
+  ReviewView,
   BillingCheckout,
   ComplianceStatus,
   CompletionView,
@@ -413,5 +415,45 @@ export function useVerifyRepairStep() {
       api.post<VerificationView>(`/api/repair-chat/steps/${v.stepId}/verify`, {
         imageKeys: v.imageKeys,
       }),
+  });
+}
+
+/**
+ * Rank contractors for a trade. Coordinates are optional: without them results are still ranked,
+ * just without the distance component.
+ */
+export function useMatchContractors(
+  trade: string | null,
+  coords: { lat: number; lng: number } | null,
+) {
+  return useQuery({
+    queryKey: ["matching", trade, coords?.lat, coords?.lng],
+    enabled: !!trade,
+    queryFn: () => {
+      const q = new URLSearchParams({ trade: trade! });
+      if (coords) {
+        q.set("lat", String(coords.lat));
+        q.set("lng", String(coords.lng));
+      }
+      return api.get<MatchResult>(`/api/matching/contractors?${q}`);
+    },
+  });
+}
+
+export function useSubmitReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (r: { jobId: string; rating: number; comment?: string }) =>
+      api.post<ReviewView>("/api/matching/reviews", r),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["matching"] }),
+  });
+}
+
+export function useReviewEligibility(jobId: string | null) {
+  return useQuery({
+    queryKey: ["review-eligibility", jobId],
+    enabled: !!jobId,
+    queryFn: () => api.get<{ jobId: string; canReview: boolean }>(
+      `/api/matching/reviews/eligibility/${jobId}`),
   });
 }

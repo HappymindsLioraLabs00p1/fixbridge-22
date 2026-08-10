@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobStatusBadge, UrgencyBadge } from "@/components/status-badge";
+import { RateContractor } from "@/components/rate-contractor";
 import { formatCents, formatRange } from "@/lib/utils";
 import type { CheckoutView } from "@/lib/types";
 
@@ -222,9 +223,14 @@ function CompletionCard({ jobId }: { jobId: string }) {
         )}
 
         {completion.approved ? (
-          <p className="text-sm font-medium text-[var(--success)]">
-            Confirmed {when(completion.approvedAt)} ✓
-          </p>
+          <>
+            <p className="text-sm font-medium text-[var(--success)]">
+              Confirmed {when(completion.approvedAt)} ✓
+            </p>
+            {/* Asked once the work is confirmed rather than before — a rating given while the
+                outcome is still in dispute is measuring the wrong thing. */}
+            <RateContractor jobId={jobId} />
+          </>
         ) : (
           <div className="space-y-2 border-t pt-4">
             <Button disabled={confirm.isPending} onClick={() => confirm.mutate()}>
