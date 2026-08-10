@@ -16,6 +16,7 @@ from app.schemas.repair import (
 )
 from app.services.ai_assessment_service import AiAssessmentService
 from app.services.conversation_agent import ConversationAgent
+from app.services.job_summary_agent import JobSummaryAgent
 from app.services.verification_agent import VerificationAgent
 
 router = APIRouter(prefix="/v1/repair", tags=["repair"],
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/v1/repair", tags=["repair"],
 
 conversation = ConversationAgent()
 verifier = VerificationAgent()
+summariser = JobSummaryAgent()
 images = AiAssessmentService()
 
 
@@ -52,3 +54,24 @@ async def verify_step(payload: VerifyStepRequest, request: Request) -> VerifySte
 
     return verifier.verify(payload.step_number, payload.instruction, processed,
                            payload.expected_result, cid)
+
+
+@router.post("/job-summary")
+async def job_summary(payload: ConversationRequest, request: Request) -> dict:
+    """Turn a conversation into a contractor briefing.
+
+    Called when a repair escalates, so the customer doesn't retype what they've already explained.
+    Java persists the result against the job; this service keeps none of it.
+    """
+    cid = payload.correlation_id or request.headers.get("X-Correlation-Id") or new_correlation_id()
+    correlation_id.set(cid)
+
+    # Reuse the conversation agent so the summary reflects the same category and safety verdict the
+    # customer was shown — a briefing that disagrees with what they were told is worse than none.
+    view = conversation.respond(payload)
+    # Named distinctly: `images` at module scope is the image service, and shadowing it here would
+    # be a trap for the next person to add a line to this function.
+    image_count = sum(len(m.image_urls) for m in payload.messages)
+    summary = summariser.build(payload.messages, view.category, view.problem, view.safety, image_count)
+    summary["correlation_id"] = cid
+    return summary
