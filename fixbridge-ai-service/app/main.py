@@ -14,7 +14,7 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import assessment, health, images
+from app.api import assessment, health, images, repair
 from app.core.config import get_settings
 from app.core.logging import configure_logging, correlation_id, new_correlation_id
 
@@ -65,3 +65,4 @@ async def observability(request: Request, call_next):
 app.include_router(health.router)
 app.include_router(images.router)
 app.include_router(assessment.router)
+app.include_router(repair.router)

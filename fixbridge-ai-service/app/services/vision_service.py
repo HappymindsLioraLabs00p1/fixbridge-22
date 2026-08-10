@@ -113,6 +113,22 @@ class VisionService:
         assessment = AssessmentResponse(**data)
         return self._enforce_safety(assessment, description)
 
+    def raw_json(self, prompt: str, images: List[bytes]) -> dict:
+        """Ask the vision model a free-form question and get parsed JSON back.
+
+        Used by the verification agent, which needs a different shape from an assessment."""
+        content: List[dict] = [{"type": "text", "text": prompt}]
+        for raw in images:
+            b64 = base64.b64encode(raw).decode()
+            content.append({"type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"}})
+        response = self.client.chat.completions.create(
+            model=self.settings.vision_model,
+            messages=[{"role": "user", "content": content}],
+            response_format={"type": "json_object"},
+        )
+        return self._parse(response.choices[0].message.content or "")
+
     @staticmethod
     def _parse(raw: str) -> dict:
         """Reasoning models narrate around their JSON and often fence it, so find the object rather
