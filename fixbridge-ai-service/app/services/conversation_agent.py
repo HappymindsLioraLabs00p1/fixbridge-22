@@ -21,6 +21,7 @@ from app.schemas.repair import (
     SafetyLevel,
 )
 from app.services.repair_planner import RepairPlanner
+from app.services.state_machine import RepairState, allows_repair_plan
 from app.services.safety_agent import SafetyAgent
 
 log = structlog.get_logger()
@@ -117,6 +118,11 @@ class ConversationAgent:
                 correlation_id=request.correlation_id,
             )
 
+        # The state machine is the second, structural guard: even with a SAFE_DIY verdict, a plan
+        # is only built from a state that permits one. The safety agent and the machine must agree.
+        state = RepairState.SAFE_DIY
+        if not allows_repair_plan(state):
+            raise RuntimeError(f"State {state} must not produce a repair plan")
         plan = self.planner.plan(self._problem(customer_text, category), category, safety)
         return ConversationResponse(
             status=ConversationStatus.REPAIR_PLAN_READY,
