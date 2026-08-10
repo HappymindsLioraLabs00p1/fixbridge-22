@@ -20,9 +20,14 @@ export default function CustomerDashboard() {
             <h1 className="text-2xl font-bold">Your properties &amp; requests</h1>
             <p className="text-sm text-muted-foreground">Report an issue and track it to completion.</p>
           </div>
-          <Link href="/customer/report" className="shrink-0">
-            <Button className="w-full sm:w-auto">Report an issue</Button>
-          </Link>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            <Link href="/customer/assistant">
+              <Button variant="outline" className="w-full sm:w-auto">Ask the assistant</Button>
+            </Link>
+            <Link href="/customer/report">
+              <Button className="w-full sm:w-auto">Report an issue</Button>
+            </Link>
+          </div>
         </div>
         <div className="grid gap-8 lg:grid-cols-2">
           <PropertiesCard />

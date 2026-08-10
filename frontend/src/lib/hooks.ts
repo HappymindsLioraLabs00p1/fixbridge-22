@@ -12,6 +12,8 @@ import type {
   ComplianceStatus,
   CompletionView,
   ContractorOption,
+  ConversationView,
+  VerificationView,
   CheckoutView,
   ContractorInvitation,
   CustomerChangeOrder,
@@ -388,5 +390,28 @@ export function useNotifications() {
     queryKey: ["notifications"],
     queryFn: () => api.get<NotificationItem[]>("/api/notifications"),
     refetchInterval: 30_000,
+  });
+}
+
+// ---- Guided repair assistant ----
+export function useStartConversation() {
+  return useMutation({
+    mutationFn: () => api.post<ConversationView>("/api/repair-chat"),
+  });
+}
+
+export function useSendChatMessage(conversationId: string | null) {
+  return useMutation({
+    mutationFn: (body: { text?: string; imageKeys?: string[] }) =>
+      api.post<ConversationView>(`/api/repair-chat/${conversationId}/messages`, body),
+  });
+}
+
+export function useVerifyRepairStep() {
+  return useMutation({
+    mutationFn: (v: { stepId: string; imageKeys: string[] }) =>
+      api.post<VerificationView>(`/api/repair-chat/steps/${v.stepId}/verify`, {
+        imageKeys: v.imageKeys,
+      }),
   });
 }

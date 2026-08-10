@@ -293,3 +293,57 @@ export interface AdminChangeOrder {
   addedDays: number | null;
   status: string;
 }
+
+// ---- Guided repair assistant ----
+export type ConversationStatus =
+  | "NEED_MORE_INFORMATION" | "NEED_IMAGE" | "REPAIR_PLAN_READY"
+  | "PROFESSIONAL_REQUIRED" | "EMERGENCY";
+
+export type SafetyLevel =
+  | "SAFE_DIY" | "PROFESSIONAL_REQUIRED" | "EMERGENCY" | "INSUFFICIENT_INFORMATION";
+
+export type StepState = "pending" | "in_progress" | "completed" | "verified" | "failed";
+
+export type VerificationResult =
+  | "STEP_COMPLETED" | "STEP_NOT_COMPLETED" | "UNCERTAIN" | "ESCALATE";
+
+export interface RepairStepView {
+  id: string;
+  number: number;
+  instruction: string;
+  why: string | null;
+  tools: string[];
+  warnings: string[];
+  expectedResult: string | null;
+  requiresImageVerification: boolean;
+  state: StepState;
+}
+
+export interface RepairPlanView {
+  id: string;
+  problem: string;
+  estimatedMinutes: number | null;
+  stopConditions: string[];
+  steps: RepairStepView[];
+}
+
+export interface ConversationView {
+  id: string;
+  status: ConversationStatus;
+  safetyLevel: SafetyLevel | null;
+  category: string | null;
+  problem: string | null;
+  message: string;
+  quickReplies: string[];
+  requiresImage: boolean;
+  plan: RepairPlanView | null;
+}
+
+export interface VerificationView {
+  stepId: string;
+  stepNumber: number;
+  result: VerificationResult;
+  confidence: number;
+  reason: string;
+  nextAction: string;
+}
