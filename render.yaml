@@ -16,6 +16,37 @@ databases:
     plan: free
 
 services:
+  # --- Python AI / image processing service ---------------------------------------------------
+  # Independent of the Java service: separate build, separate deploy, separate scaling. Java is the
+  # only caller; this service holds no database and never writes to FixBridge's tables.
+  - type: web
+    name: fixbridge-ai-service
+    runtime: docker
+    dockerfilePath: ./fixbridge-ai-service/Dockerfile
+    dockerContext: ./fixbridge-ai-service
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # Generated once by Render; the Java service reads the same value via fromService below, so
+      # the two are never kept in sync by hand.
+      - key: SERVICE_AUTH_TOKEN
+        generateValue: true
+      # Stubbed until a key is added — the pipeline is fully exercised and costs nothing.
+      - key: STUB_MODE
+        value: "true"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: VISION_MODEL
+        value: gpt-4o-mini
+      # Cost controls. A vision model bills by pixels, so these are the levers that matter.
+      - key: MAX_DIMENSION
+        value: "1600"
+      - key: MAX_IMAGES_PER_ASSESSMENT
+        value: "4"
+      - key: LOG_LEVEL
+        value: INFO
   # No Redis service on purpose. It is only a cache here — the app runs correctly without it (the
   # health check deliberately ignores it), and free Redis is not dependable across providers. Add one
   # later and set REDIS_HOST/REDIS_PORT if caching becomes worth it.
@@ -48,6 +79,21 @@ services:
         sync: false
       - key: DB_PARAMS
         sync: false
+
+      # --- Python AI service ------------------------------------------------------------
+      # Present but NOT activated: AI_PROVIDER is unchanged, so the existing client stays in use
+      # until you deliberately set it to `python`.
+      # AI_SERVICE_URL is manual because Render's host property doesn't yield a full https:// URL —
+      # paste the deployed service URL rather than risk a silently wrong value.
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        fromService:
+          name: fixbridge-ai-service
+          type: web
+          envVarKey: SERVICE_AUTH_TOKEN
+      - key: AI_SERVICE_TIMEOUT
+        value: "60"
 
       # --- Security -------------------------------------------------------------------------
       - key: JWT_SECRET
