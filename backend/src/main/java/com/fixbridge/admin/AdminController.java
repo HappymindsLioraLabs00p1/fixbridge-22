@@ -7,6 +7,7 @@ import com.fixbridge.job.dto.ChangeOrderDtos;
 import com.fixbridge.payment.dto.PaymentDtos;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,16 +30,19 @@ public class AdminController {
     private final com.fixbridge.payment.PaymentService paymentService;
     private final com.fixbridge.contractor.ComplianceService complianceService;
     private final ReportingService reportingService;
+    private final DataExportService dataExportService;
 
     public AdminController(AdminService adminService, ChangeOrderService changeOrderService,
                            com.fixbridge.payment.PaymentService paymentService,
                            com.fixbridge.contractor.ComplianceService complianceService,
-                           ReportingService reportingService) {
+                           ReportingService reportingService,
+                           DataExportService dataExportService) {
         this.adminService = adminService;
         this.changeOrderService = changeOrderService;
         this.paymentService = paymentService;
         this.complianceService = complianceService;
         this.reportingService = reportingService;
+        this.dataExportService = dataExportService;
     }
 
     @GetMapping("/dispatch-queue")
@@ -71,6 +76,18 @@ public class AdminController {
     @PostMapping("/jobs/{jobId}/payout")
     public PaymentDtos.PayoutView releasePayout(@PathVariable UUID jobId) {
         return adminService.releasePayout(SecurityUtil.currentUser(), jobId);
+    }
+
+    /**
+     * Download every business record as JSON. This is the backup you can take without database
+     * credentials — from a browser, with an admin session, in one request.
+     */
+    @GetMapping("/export")
+    public ResponseEntity<Map<String, Object>> exportData() {
+        String filename = "fixbridge-backup-" + java.time.LocalDate.now() + ".json";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(dataExportService.exportAll());
     }
 
     /** Revenue, gross profit, conversion and contractor performance (FR-ADMIN-6). */
