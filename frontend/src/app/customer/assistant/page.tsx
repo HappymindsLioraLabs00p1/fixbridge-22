@@ -33,17 +33,28 @@ function Assistant() {
   const start = useStartConversation();
   const send = useSendChatMessage(conversationId);
   const bottom = useRef<HTMLDivElement>(null);
+  // React runs effects twice in development. Without this guard that opens two conversations and
+  // the second silently replaces the first, so the greeting and the transcript disagree.
+  const opened = useRef(false);
 
   // Open a conversation as soon as the screen loads — asking someone to press "start" before they
   // can describe a leak is a pointless extra step.
   useEffect(() => {
-    if (conversationId || start.isPending) return;
+    if (opened.current) return;
+    opened.current = true;
     start.mutate(undefined, {
       onSuccess: (c) => {
         setConversationId(c.id);
         setView(c);
         setBubbles([{ role: "assistant", text: c.message }]);
       },
+      onError: () =>
+        setBubbles([
+          {
+            role: "assistant",
+            text: "I couldn't start a conversation just now. Please refresh and try again.",
+          },
+        ]),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -70,6 +81,32 @@ function Assistant() {
           ]),
       },
     );
+  }
+
+  /**
+   * Some quick replies are actions rather than answers. "Yes, guide me" sent as a message made the
+   * assistant re-read the transcript and produce the plan a second time; "Contact a professional"
+   * belongs on the reporting flow, not in the chat.
+   */
+  function quickReply(reply: string) {
+    const lower = reply.toLowerCase();
+    if (lower.startsWith("yes, guide")) {
+      setBubbles((b) => [
+        ...b,
+        { role: "customer", text: reply },
+        { role: "assistant", text: "Great — work through the steps below and take your time." },
+      ]);
+      return;
+    }
+    if (lower.includes("professional")) {
+      window.location.href = "/customer/report";
+      return;
+    }
+    if (lower.startsWith("skip")) {
+      submit("I'd rather not send a photo");
+      return;
+    }
+    submit(reply);
   }
 
   async function sendPhotos(files: FileList | null) {
@@ -154,7 +191,7 @@ function Assistant() {
           {view?.quickReplies?.length ? (
             <div className="flex flex-wrap gap-2">
               {view.quickReplies.map((q) => (
-                <Button key={q} size="sm" variant="outline" disabled={busy} onClick={() => submit(q)}>
+                <Button key={q} size="sm" variant="outline" disabled={busy} onClick={() => quickReply(q)}>
                   {q}
                 </Button>
               ))}
@@ -201,12 +238,12 @@ function RepairPlan({ plan }: { plan: NonNullable<ConversationView["plan"]> }) {
       </div>
 
       <ol className="mt-3 space-y-3">
-        {plan.steps.map((s) => (
+        {(plan.steps ?? []).map((s) => (
           <Step key={s.id} step={s} />
         ))}
       </ol>
 
-      {plan.stopConditions.length > 0 && (
+      {(plan.stopConditions ?? []).length > 0 && (
         <div className="mt-4 rounded-md border-l-2 p-3 text-sm" style={{ borderColor: "var(--warning)" }}>
           <p className="font-medium">Stop straight away if:</p>
           <ul className="mt-1 list-disc pl-5 text-muted-foreground">
@@ -228,6 +265,9 @@ function Step({ step }: { step: RepairStepView }) {
   const verify = useVerifyRepairStep();
   const [result, setResult] = useState<VerificationView | null>(null);
   const [busy, setBusy] = useState(false);
+  // Steps that need no photo still need a way to be marked off, otherwise the plan is a wall of
+  // text with no sense of progress.
+  const [ticked, setTicked] = useState(false);
 
   async function checkWithPhoto(files: FileList | null) {
     if (!files?.length) return;
@@ -240,7 +280,7 @@ function Step({ step }: { step: RepairStepView }) {
     }
   }
 
-  const done = result?.result === "STEP_COMPLETED" || step.state === "verified";
+  const done = ticked || result?.result === "STEP_COMPLETED" || step.state === "verified";
 
   return (
     <li className="rounded-md border p-3">
@@ -257,21 +297,28 @@ function Step({ step }: { step: RepairStepView }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{step.instruction}</p>
           {step.why && <p className="mt-1 text-xs text-muted-foreground">Why: {step.why}</p>}
-          {step.tools.length > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">You&apos;ll need: {step.tools.join(", ")}</p>
+          {(step.tools ?? []).length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">You&apos;ll need: {(step.tools ?? []).join(", ")}</p>
           )}
-          {step.warnings.map((w) => (
+          {(step.warnings ?? []).map((w) => (
             <p key={w} className="mt-1 text-xs font-medium" style={{ color: "var(--warning)" }}>
               ⚠ {w}
             </p>
           ))}
 
-          {step.requiresImageVerification && !done && (
-            <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs">
-              {busy || verify.isPending ? "Checking…" : "📷 Send a photo to check this"}
-              <input type="file" accept="image/*" className="hidden" disabled={busy}
-                     onChange={(e) => checkWithPhoto(e.target.files)} />
-            </label>
+          {!done && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setTicked(true)}>
+                I&apos;ve done this
+              </Button>
+              {step.requiresImageVerification && (
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs">
+                  {busy || verify.isPending ? "Checking…" : "📷 Check with a photo"}
+                  <input type="file" accept="image/*" className="hidden" disabled={busy}
+                         onChange={(e) => checkWithPhoto(e.target.files)} />
+                </label>
+              )}
+            </div>
           )}
 
           {result && (
