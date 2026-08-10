@@ -26,3 +26,8 @@ crash.log
 
 # Local Netlify folder
 .netlify
+
+# Data exports contain real customer emails and property addresses. Keep them out of the
+# repository — a backup belongs somewhere private, not in version control.
+backups/
+*fixbridge-backup-*.json
