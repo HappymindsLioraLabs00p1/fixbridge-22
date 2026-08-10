@@ -51,6 +51,17 @@ public class Contractor {
     @Column(name = "travel_radius_miles")
     private Integer travelRadiusMiles = 25;
 
+    // Where the contractor is based. Nullable on purpose: someone who hasn't supplied a location is
+    // still dispatchable, they just can't be ranked by distance.
+    private java.math.BigDecimal latitude;
+    private java.math.BigDecimal longitude;
+
+    @Column(name = "service_city")
+    private String serviceCity;
+
+    @Column(name = "service_postal_code")
+    private String servicePostalCode;
+
     // Stripe Connect
     @Column(name = "stripe_account_id", unique = true)
     private String stripeAccountId;
