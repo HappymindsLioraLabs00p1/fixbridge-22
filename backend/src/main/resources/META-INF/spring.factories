@@ -1,0 +1,4 @@
+# EnvironmentPostProcessors run before the application context exists, so component scanning has
+# not happened yet and an annotation would never be seen. Registration has to be declarative.
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.fixbridge.config.DatabaseUrlEnvironmentPostProcessor
