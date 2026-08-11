@@ -327,9 +327,18 @@ export interface RepairPlanView {
   steps: RepairStepView[];
 }
 
+export type RepairState =
+  | "NEW" | "COLLECTING_INFORMATION" | "WAITING_FOR_IMAGE" | "IMAGE_ANALYSIS"
+  | "SAFETY_CHECK" | "INSUFFICIENT_INFORMATION" | "SAFE_DIY" | "PROFESSIONAL_REQUIRED"
+  | "EMERGENCY" | "REPAIR_PLAN_CREATED" | "STEP_IN_PROGRESS" | "WAITING_FOR_VERIFICATION"
+  | "STEP_VERIFICATION" | "STEP_FAILED" | "REPAIR_COMPLETED" | "CONTRACTOR_SEARCH"
+  | "CONTRACTOR_REQUESTED" | "CONTRACTOR_ACCEPTED" | "ESCALATED" | "CLOSED";
+
 export interface ConversationView {
   id: string;
   status: ConversationStatus;
+  /** Precise state — `status` says what to do next, this says where the repair is. */
+  repairState: RepairState;
   safetyLevel: SafetyLevel | null;
   category: string | null;
   problem: string | null;

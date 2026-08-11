@@ -1,6 +1,7 @@
 package com.fixbridge.repair;
 
 import com.fixbridge.common.enums.ConversationStatus;
+import com.fixbridge.common.enums.RepairState;
 import com.fixbridge.common.enums.SafetyLevel;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -38,6 +39,12 @@ public class RepairConversation {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(columnDefinition = "conversation_status", nullable = false)
     private ConversationStatus status = ConversationStatus.NEED_MORE_INFORMATION;
+
+    /** The precise state, sent back to the AI service each turn so the machine can resume. Stored
+     *  as a string rather than a native enum — see V10 for why. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "repair_state", length = 40, nullable = false)
+    private RepairState repairState = RepairState.NEW;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "safety_level", columnDefinition = "safety_level")

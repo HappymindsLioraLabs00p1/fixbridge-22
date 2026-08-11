@@ -22,6 +22,15 @@ from app.schemas.repair import (
 )
 from app.services.repair_planner import RepairPlanner
 from app.services.state_machine import RepairState, allows_repair_plan
+
+# Where a safety verdict puts the repair. Declared once so the conversation agent and the Repair
+# Manager cannot disagree about what a verdict means.
+STATE_FOR_SAFETY = {
+    SafetyLevel.SAFE_DIY: RepairState.SAFE_DIY,
+    SafetyLevel.PROFESSIONAL_REQUIRED: RepairState.PROFESSIONAL_REQUIRED,
+    SafetyLevel.EMERGENCY: RepairState.EMERGENCY,
+    SafetyLevel.INSUFFICIENT_INFORMATION: RepairState.INSUFFICIENT_INFORMATION,
+}
 from app.services.safety_agent import SafetyAgent
 
 log = structlog.get_logger()
@@ -120,7 +129,11 @@ class ConversationAgent:
 
         # The state machine is the second, structural guard: even with a SAFE_DIY verdict, a plan
         # is only built from a state that permits one. The safety agent and the machine must agree.
-        state = RepairState.SAFE_DIY
+        #
+        # The state is derived from the verdict rather than assumed. Assigning SAFE_DIY here and
+        # then asking whether SAFE_DIY permits a plan was a guard that checked a constant it had
+        # just written, so it could never fail — it read as defence in depth while providing none.
+        state = STATE_FOR_SAFETY[safety.level]
         if not allows_repair_plan(state):
             raise RuntimeError(f"State {state} must not produce a repair plan")
         plan = self.planner.plan(self._problem(customer_text, category), category, safety)

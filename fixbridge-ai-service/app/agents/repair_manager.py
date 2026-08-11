@@ -68,13 +68,9 @@ TOOLS_BY_STATE: Dict[RepairState, List[str]] = {
     RepairState.INSUFFICIENT_INFORMATION: ["analyze_problem", "run_safety_check"],
 }
 
-# Where a safety verdict lands the repair.
-STATE_FOR_SAFETY = {
-    SafetyLevel.SAFE_DIY: RepairState.SAFE_DIY,
-    SafetyLevel.PROFESSIONAL_REQUIRED: RepairState.PROFESSIONAL_REQUIRED,
-    SafetyLevel.EMERGENCY: RepairState.EMERGENCY,
-    SafetyLevel.INSUFFICIENT_INFORMATION: RepairState.INSUFFICIENT_INFORMATION,
-}
+# Where a safety verdict lands the repair. Imported rather than redeclared: two copies of this
+# table would eventually disagree, and the disagreement would be about whether a plan is allowed.
+from app.services.conversation_agent import STATE_FOR_SAFETY  # noqa: E402
 
 
 @dataclass
@@ -176,7 +172,10 @@ class RepairManagerAgent:
     def handle(self, request: ConversationRequest,
                context: Optional[RepairContext] = None) -> tuple[ConversationResponse, RepairContext]:
         """Advance the repair by one turn, choosing tools legal for the current state."""
-        ctx = context or RepairContext()
+        # Resume where the caller says the repair had got to. The service holds nothing between
+        # turns, so without this every turn would restart at NEW and the machine could never
+        # observe a transition it is meant to police.
+        ctx = context or RepairContext(state=request.current_state or RepairState.NEW)
         text = " ".join(m.text for m in request.messages if m.role == "customer")
         ctx.image_count = sum(len(m.image_urls) for m in request.messages)
 
@@ -216,8 +215,11 @@ class RepairManagerAgent:
             ctx.record(self.tools.invoke("match_contractor", category=ctx.category))
 
         # The conversation agent composes the customer-facing turn from the same inputs, so what the
-        # customer is told and what the trace shows cannot disagree.
+        # customer is told and what the trace shows cannot disagree. The state the manager arrived
+        # at is stamped onto the response — this is what the client renders progress from, and it
+        # is the reason the machine is worth running at all.
         response = self.conversation.respond(request)
+        response.state = ctx.state
 
         log.info("repair_manager_turn", state=ctx.state.value,
                  safety=ctx.safety_level.value if ctx.safety_level else None,

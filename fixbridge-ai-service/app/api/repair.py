@@ -14,6 +14,7 @@ from app.schemas.repair import (
     VerifyStepRequest,
     VerifyStepResponse,
 )
+from app.agents.repair_manager import RepairManagerAgent
 from app.services.ai_assessment_service import AiAssessmentService
 from app.services.conversation_agent import ConversationAgent
 from app.services.job_summary_agent import JobSummaryAgent
@@ -22,6 +23,7 @@ from app.services.verification_agent import VerificationAgent
 router = APIRouter(prefix="/v1/repair", tags=["repair"],
                    dependencies=[Depends(require_service_token), Depends(rate_limit)])
 
+manager = RepairManagerAgent()
 conversation = ConversationAgent()
 verifier = VerificationAgent()
 summariser = JobSummaryAgent()
@@ -38,7 +40,11 @@ async def converse(payload: ConversationRequest, request: Request) -> Conversati
     cid = payload.correlation_id or request.headers.get("X-Correlation-Id") or new_correlation_id()
     correlation_id.set(cid)
     payload.correlation_id = cid
-    return conversation.respond(payload)
+    # Through the Repair Manager rather than straight to the conversation agent. The manager runs
+    # the tools, records the trace, and advances the state machine; calling the agent directly
+    # produced the same customer-facing text but left the state at NEW and the trace empty.
+    response, _ctx = manager.handle(payload)
+    return response
 
 
 @router.post("/verify-step", response_model=VerifyStepResponse)

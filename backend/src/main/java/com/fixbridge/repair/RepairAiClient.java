@@ -1,6 +1,7 @@
 package com.fixbridge.repair;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fixbridge.common.enums.RepairState;
 import com.fixbridge.common.CorrelationId;
 import com.fixbridge.config.FixBridgeProperties;
 import org.slf4j.Logger;
@@ -37,9 +38,17 @@ public class RepairAiClient {
                 .build();
     }
 
-    /** Advance the conversation by one turn. */
-    public JsonNode converse(List<Map<String, Object>> messages) {
-        return post("/v1/repair/converse", Map.of("messages", messages));
+    /**
+     * Advance the conversation by one turn.
+     *
+     * <p>The current state travels with the request: the AI service holds nothing between turns, so
+     * without it the state machine restarts at NEW every time and can never observe the transitions
+     * it exists to police.
+     */
+    public JsonNode converse(List<Map<String, Object>> messages, RepairState currentState) {
+        return post("/v1/repair/converse", Map.of(
+                "messages", messages,
+                "current_state", (currentState == null ? RepairState.NEW : currentState).name()));
     }
 
     /** Check a progress photo against what the step was meant to achieve. */

@@ -85,7 +85,7 @@ public class RepairChatService {
 
         JsonNode reply;
         try {
-            reply = ai.converse(replayHistory(conversationId));
+            reply = ai.converse(replayHistory(conversationId), conversation.getRepairState());
         } catch (RepairAiClient.RepairAiUnavailableException e) {
             // The assistant being down must not lose the customer's message — it's saved above, and
             // they're told plainly rather than shown an error.
@@ -188,6 +188,10 @@ public class RepairChatService {
     private void applyReply(RepairConversation conversation, JsonNode reply) {
         conversation.setStatus(enumOrDefault(reply.path("status").asText(),
                 ConversationStatus.NEED_MORE_INFORMATION));
+        // An unrecognised state means the AI service knows a state this build does not. Keeping the
+        // previous one is better than resetting to NEW, which would rewind the machine.
+        conversation.setRepairState(enumOrDefault(reply.path("state").asText(),
+                conversation.getRepairState()));
         conversation.setSafetyLevel(enumOrDefault(reply.path("safety").path("level").asText(),
                 SafetyLevel.INSUFFICIENT_INFORMATION));
         if (reply.hasNonNull("category")) conversation.setCategory(reply.path("category").asText());
@@ -250,7 +254,7 @@ public class RepairChatService {
                             s.getExpectedResult(), s.isRequiresImageVerification(), s.getState()))
                     .toList();
         return new RepairDtos.ConversationView(
-                c.getId(), c.getStatus(), c.getSafetyLevel(), c.getCategory(), c.getProblem(),
+                c.getId(), c.getStatus(), c.getRepairState(), c.getSafetyLevel(), c.getCategory(), c.getProblem(),
                 message, quickReplies, requiresImage,
                 plan == null ? null : new RepairDtos.PlanView(plan.getId(), plan.getProblem(),
                         plan.getEstimatedMinutes(), List.of(plan.getStopConditions()), stepViews));

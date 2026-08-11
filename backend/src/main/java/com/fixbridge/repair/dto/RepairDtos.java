@@ -31,7 +31,10 @@ public final class RepairDtos {
 
     /** What the chat UI renders. Structured, so the client never parses assistant prose. */
     public record ConversationView(
-            UUID id, ConversationStatus status, SafetyLevel safetyLevel,
+            UUID id, ConversationStatus status,
+            /* The precise state. `status` says what to do next; this says where the repair is. */
+            RepairState repairState,
+            SafetyLevel safetyLevel,
             String category, String problem, String message,
             List<String> quickReplies, boolean requiresImage, PlanView plan
     ) {}

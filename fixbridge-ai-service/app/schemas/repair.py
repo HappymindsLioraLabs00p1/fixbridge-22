@@ -19,6 +19,36 @@ class SafetyLevel(str, Enum):
     INSUFFICIENT_INFORMATION = "INSUFFICIENT_INFORMATION"
 
 
+class RepairState(str, Enum):
+    """Where a repair actually is.
+
+    This lives here rather than beside the transition table because it is part of the wire
+    contract: the client renders from it, so it belongs with the other response enums. The state
+    machine imports it back.
+    """
+
+    NEW = "NEW"
+    COLLECTING_INFORMATION = "COLLECTING_INFORMATION"
+    WAITING_FOR_IMAGE = "WAITING_FOR_IMAGE"
+    IMAGE_ANALYSIS = "IMAGE_ANALYSIS"
+    SAFETY_CHECK = "SAFETY_CHECK"
+    INSUFFICIENT_INFORMATION = "INSUFFICIENT_INFORMATION"
+    SAFE_DIY = "SAFE_DIY"
+    PROFESSIONAL_REQUIRED = "PROFESSIONAL_REQUIRED"
+    EMERGENCY = "EMERGENCY"
+    REPAIR_PLAN_CREATED = "REPAIR_PLAN_CREATED"
+    STEP_IN_PROGRESS = "STEP_IN_PROGRESS"
+    WAITING_FOR_VERIFICATION = "WAITING_FOR_VERIFICATION"
+    STEP_VERIFICATION = "STEP_VERIFICATION"
+    STEP_FAILED = "STEP_FAILED"
+    REPAIR_COMPLETED = "REPAIR_COMPLETED"
+    CONTRACTOR_SEARCH = "CONTRACTOR_SEARCH"
+    CONTRACTOR_REQUESTED = "CONTRACTOR_REQUESTED"
+    CONTRACTOR_ACCEPTED = "CONTRACTOR_ACCEPTED"
+    ESCALATED = "ESCALATED"
+    CLOSED = "CLOSED"
+
+
 class ConversationStatus(str, Enum):
     NEED_MORE_INFORMATION = "NEED_MORE_INFORMATION"
     NEED_IMAGE = "NEED_IMAGE"
@@ -79,11 +109,19 @@ class ConversationRequest(BaseModel):
     """Full history each turn — the customer's answers must never be asked for twice."""
 
     messages: List[Message] = Field(min_length=1)
+    # The service holds no state between turns, so the caller sends back where the repair had got
+    # to. Absent, the repair restarts at NEW — which is right for a new conversation and merely
+    # conservative for an existing one, since the transcript is replayed anyway.
+    current_state: Optional[RepairState] = None
     correlation_id: Optional[str] = None
 
 
 class ConversationResponse(BaseModel):
     status: ConversationStatus
+    # The precise state, alongside the coarse status. `status` says what the client must do next
+    # and stays stable; `state` says where the repair is, and is what a progress indicator or
+    # status line should render. Both are returned so existing callers keep working.
+    state: RepairState = RepairState.NEW
     category: Optional[str] = None
     problem: Optional[str] = None
     confidence: float = Field(ge=0.0, le=1.0)

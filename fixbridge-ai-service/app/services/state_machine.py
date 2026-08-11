@@ -10,35 +10,19 @@ SAFETY_CHECK. That is enforced structurally here, not by prompt wording.
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Dict, Set
 
 import structlog
 
+# The state enum is part of the wire contract, so it is defined with the response schemas and
+# imported back here. Re-exported so `from app.services.state_machine import RepairState` — which
+# reads naturally next to the transition table — keeps working.
+from app.schemas.repair import RepairState
+
 log = structlog.get_logger()
 
-
-class RepairState(str, Enum):
-    NEW = "NEW"
-    COLLECTING_INFORMATION = "COLLECTING_INFORMATION"
-    WAITING_FOR_IMAGE = "WAITING_FOR_IMAGE"
-    IMAGE_ANALYSIS = "IMAGE_ANALYSIS"
-    SAFETY_CHECK = "SAFETY_CHECK"
-    INSUFFICIENT_INFORMATION = "INSUFFICIENT_INFORMATION"
-    SAFE_DIY = "SAFE_DIY"
-    PROFESSIONAL_REQUIRED = "PROFESSIONAL_REQUIRED"
-    EMERGENCY = "EMERGENCY"
-    REPAIR_PLAN_CREATED = "REPAIR_PLAN_CREATED"
-    STEP_IN_PROGRESS = "STEP_IN_PROGRESS"
-    WAITING_FOR_VERIFICATION = "WAITING_FOR_VERIFICATION"
-    STEP_VERIFICATION = "STEP_VERIFICATION"
-    STEP_FAILED = "STEP_FAILED"
-    REPAIR_COMPLETED = "REPAIR_COMPLETED"
-    CONTRACTOR_SEARCH = "CONTRACTOR_SEARCH"
-    CONTRACTOR_REQUESTED = "CONTRACTOR_REQUESTED"
-    CONTRACTOR_ACCEPTED = "CONTRACTOR_ACCEPTED"
-    ESCALATED = "ESCALATED"
-    CLOSED = "CLOSED"
+__all__ = ["RepairState", "TRANSITIONS", "IllegalTransition", "can_transition", "transition",
+           "allows_repair_plan"]
 
 
 # Every legal move. Absence is a rejection — this is the whole point of the module.
