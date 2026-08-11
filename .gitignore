@@ -44,3 +44,10 @@ __pycache__/
 
 # Local AI/provider configuration. Holds real keys — never tracked. See backend/Environment.example.
 backend/Environment
+
+# Android signing keys — losing these means never updating the Play listing; committing them means
+# anyone can publish as you.
+android/*.keystore
+android/*.jks
+android/app-release-*.aab
+android/app-release-*.apk

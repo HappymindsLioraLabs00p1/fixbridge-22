@@ -1,0 +1,46 @@
+{
+  "packageId": "ai.fixbridge.app",
+  "host": "fixbridge-22.vercel.app",
+  "name": "FixBridge — Home repair, fixed by AI.",
+  "launcherName": "FixBridge",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#0B2447",
+  "themeColorDark": "#0B2447",
+  "navigationColor": "#0B2447",
+  "navigationColorDark": "#0B2447",
+  "navigationDividerColor": "#0B2447",
+  "navigationDividerColorDark": "#0B2447",
+  "backgroundColor": "#0B2447",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://fixbridge-22.vercel.app/icons/icon-512.png",
+  "maskableIconUrl": "https://fixbridge-22.vercel.app/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "fixbridge"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Report an issue",
+      "shortName": "Report",
+      "url": "/customer/report",
+      "chosenIconUrl": "https://fixbridge-22.vercel.app/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://fixbridge-22.vercel.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://fixbridge-22.vercel.app/",
+  "minSdkVersion": 21,
+  "appVersion": "1.0.0",
+  "additionalTrustedOrigins": []
+}
