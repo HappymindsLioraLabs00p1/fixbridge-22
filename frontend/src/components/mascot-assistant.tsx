@@ -167,7 +167,15 @@ function MascotSvg({ mode }: { mode: "intro" | "corner" }) {
   const BLUE_DARK = "#234f86";
   const SKIN = "#ffcf9e";
   return (
-    <svg width="110" height="106" viewBox="0 0 120 116" xmlns="http://www.w3.org/2000/svg">
+    // Only the corner mascot shrinks on a phone. At 110px it took a quarter of a 390px screen and
+    // sat across the page copy; two-thirds of that still reads as a character while leaving the
+    // text legible. The intro keeps its full size — it owns the screen at that point, and the
+    // centring offsets it is flown with were tuned against this width.
+    <svg
+      viewBox="0 0 120 116"
+      xmlns="http://www.w3.org/2000/svg"
+      className={mode === "intro" ? "h-[106px] w-[110px]" : "h-auto w-[72px] sm:w-[110px]"}
+    >
       {/* left arm holding a wrench (raised a little more when getting ready) */}
       <path
         d={mode === "intro" ? "M34 70C22 70 15 60 14 48" : "M34 70C24 76 20 90 22 102"}
