@@ -10,7 +10,7 @@ public interface AiAssessmentRepository extends JpaRepository<AiAssessmentEntity
 
     /** Assessments awaiting a retry, oldest attempt first. */
     @org.springframework.data.jpa.repository.Query(
-            "select a from AiAssessmentEntity a where a.status <> com.fixbridge.common.enums.AssessmentStatus.completed "
+            "select a from AiAssessmentEntity a where a.status = com.fixbridge.common.enums.AssessmentStatus.pending "
           + "order by a.lastAttemptAt asc nulls first")
     java.util.List<AiAssessmentEntity> findRetryable(org.springframework.data.domain.Pageable page);
 }

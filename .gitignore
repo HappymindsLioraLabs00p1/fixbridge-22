@@ -41,3 +41,6 @@ __pycache__/
 
 # Local-only copy of the AI service token for integration testing. Never committed.
 .ai-service-token
+
+# Local AI/provider configuration. Holds real keys — never tracked. See backend/Environment.example.
+backend/Environment

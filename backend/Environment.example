@@ -1,0 +1,8 @@
+# Copy to `backend/Environment` and fill in real values. That file is gitignored.
+# Never commit real keys — see docs and §28 of the AI integration spec.
+
+AI_PROVIDER=openrouter          # openai | python | openrouter
+OPENROUTER_API_KEY=             # obtain from the provider; set in Render for deployments
+OPENROUTER_MODEL=
+AI_REASONING=true
+INTEGRATIONS_STUB_MODE=false
