@@ -205,7 +205,9 @@ function Assistant() {
 
       {/* Composer */}
       {!emergency && (
-        <div className="sticky bottom-0 mt-4 space-y-2 bg-[var(--background)] pt-3">
+        // The bottom inset clears the iPhone home indicator, which would otherwise sit across the
+        // send button. Zero in a browser tab.
+        <div className="sticky bottom-0 mt-4 space-y-2 bg-[var(--background)] pt-3 pb-[env(safe-area-inset-bottom)]">
           {view?.quickReplies?.length ? (
             <div className="flex flex-wrap gap-2">
               {view.quickReplies.map((q) => (

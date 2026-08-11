@@ -32,7 +32,11 @@ export function SiteHeader() {
   const iconHref = role ? HOME_FOR_ROLE[role] ?? "/customer" : "/";
 
   return (
-    <header className="border-b bg-background">
+    // Installed to the home screen, iOS draws the page *under* the status bar — the manifest asks
+    // for a translucent bar and a cover viewport, which is what gives the app its edge-to-edge
+    // look. Without this inset the clock lands on the logo and the battery icon on the nav.
+    // In a browser tab the inset resolves to zero, so this costs nothing there.
+    <header className="border-b bg-background pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Link href={iconHref} aria-label={`${brand.name} — go to dashboard`} className="flex items-center">
           {/* App icon: FIX over BRIDGE·AI, stacked on dark blue. */}

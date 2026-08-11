@@ -119,7 +119,7 @@ export function MascotAssistant() {
 
       {/* The mascot: anchored bottom-right, flown to center during the intro, then transitioned home. */}
       <div
-        className="fb-mascot-move fixed bottom-5 right-5 z-[70] flex select-none flex-col items-end gap-3"
+        className="fb-mascot-move fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-[70] flex select-none flex-col items-end gap-3"
         style={{
           transform: intro
             ? "translate(calc(-50vw + 86px), calc(-50vh + 44px)) scale(1.95)"
