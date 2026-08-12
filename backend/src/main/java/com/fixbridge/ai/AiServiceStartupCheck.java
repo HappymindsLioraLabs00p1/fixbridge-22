@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -33,6 +34,9 @@ public class AiServiceStartupCheck {
 
     /** Short: this is a diagnostic, not a readiness gate. A cold AI service is reported, not waited for. */
     private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(20);
+
+    @org.springframework.beans.factory.annotation.Value("${fixbridge.ai.keep-alive:true}")
+    private boolean keepAlive;
 
     private final FixBridgeProperties props;
 
@@ -105,6 +109,33 @@ public class AiServiceStartupCheck {
             // a warning rather than an error.
             log.warn("AI service unreachable at startup ({}): {}. It may be cold; repair chat will "
                     + "degrade until it answers.", baseUrl, e.getMessage());
+        }
+    }
+    /**
+     * Keeps the AI service awake.
+     *
+     * <p>Hosting tiers that suspend on idle turn the first message of every session into a
+     * twenty-second wait, or a failure the customer reads as the assistant being broken. A cheap
+     * periodic health call keeps the container resident, so somebody opening the app after lunch
+     * gets the same experience as somebody who never closed it.
+     *
+     * <p>Ten minutes is chosen against the common fifteen-minute idle window — frequent enough to
+     * prevent the suspend, infrequent enough to cost nothing. Set fixbridge.ai.keep-alive=false
+     * where the platform does not suspend and these calls would be pure waste.
+     */
+    @Scheduled(fixedDelayString = "${fixbridge.ai.keep-alive-ms:600000}", initialDelay = 600_000)
+    public void keepAwake() {
+        if (!keepAlive) return;
+        String url = props.aiService().baseUrl();
+        if (url == null || url.isBlank() || url.contains("localhost")) return;
+        try {
+            WebClient.builder().baseUrl(url).build()
+                    .get().uri("/health").retrieve().toBodilessEntity()
+                    .block(Duration.ofSeconds(30));
+        } catch (Exception e) {
+            // Not worth a warning: the next real request retries, and the startup probe already
+            // reported anything structurally wrong.
+            log.debug("AI service keep-alive ping failed: {}", e.getMessage());
         }
     }
 }

@@ -61,24 +61,54 @@ public class RepairAiClient {
                 "image_urls", imageUrls));
     }
 
+    /**
+     * How many times a single turn may be attempted.
+     *
+     * <p>Two, not more. The AI service is hosted on a tier that suspends when idle, so the first
+     * request after a quiet period lands on a container that is still starting and fails while
+     * waking it. The second almost always succeeds, because the first one did the waking.
+     *
+     * <p>Retrying was worth adding because the failure is not random: it is the predictable cost of
+     * a sleeping service, and the customer was paying it as "I'm having trouble thinking right now"
+     * on the first message of every session. More than one retry would turn a genuine outage into a
+     * long silent wait, which is worse than an honest message.
+     */
+    private static final int MAX_ATTEMPTS = 2;
+
     private JsonNode post(String path, Map<String, Object> body) {
-        try {
-            JsonNode result = client.post().uri(path)
-                    .header("X-Correlation-Id", CorrelationId.current())
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(Duration.ofSeconds(cfg.timeoutSeconds()));
-            if (result == null) {
-                throw new RepairAiUnavailableException("The assistant returned no response");
+        RuntimeException last = null;
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                JsonNode result = client.post().uri(path)
+                        .header("X-Correlation-Id", CorrelationId.current())
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .block(Duration.ofSeconds(cfg.timeoutSeconds()));
+                if (result == null) {
+                    throw new RepairAiUnavailableException("The assistant returned no response");
+                }
+                if (attempt > 1) {
+                    log.info("Repair AI call to {} succeeded on attempt {} — the service was cold",
+                            path, attempt);
+                }
+                return result;
+            } catch (Exception e) {
+                last = e instanceof RepairAiUnavailableException r
+                        ? r : new RepairAiUnavailableException(e.getMessage());
+                if (attempt < MAX_ATTEMPTS) {
+                    // Logged at info: a first-attempt failure against a sleeping service is
+                    // expected, and logging it as a warning would bury the ones that matter.
+                    log.info("Repair AI call to {} failed on attempt {}, retrying: {}",
+                            path, attempt, e.getMessage());
+                } else {
+                    log.warn("Repair AI call to {} failed after {} attempts: {}",
+                            path, MAX_ATTEMPTS, e.getMessage());
+                }
             }
-            return result;
-        } catch (RepairAiUnavailableException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("Repair AI call to {} failed: {}", path, e.getMessage());
-            throw new RepairAiUnavailableException(e.getMessage());
         }
+        throw last;
     }
 
     /**
