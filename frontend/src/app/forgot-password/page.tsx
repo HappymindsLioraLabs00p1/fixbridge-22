@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  // Before hydration a submit button performs a native GET and silently discards
+  // the form. See use-hydrated.ts.
+  const hydrated = useHydrated();
   const request = useMutation({
     mutationFn: (address: string) =>
       api.post<{ message: string }>("/api/auth/forgot-password", { email: address }),
@@ -56,7 +60,7 @@ export default function ForgotPasswordPage() {
                   {(request.error as ApiError)?.message ?? "Something went wrong. Please try again."}
                 </p>
               )}
-              <Button type="submit" disabled={request.isPending || !email} className="w-full">
+              <Button type="submit" disabled={!hydrated || request.isPending || !email} className="w-full">
                 {request.isPending ? "Sending…" : "Send reset link"}
               </Button>
               <p className="text-center text-sm text-muted-foreground">

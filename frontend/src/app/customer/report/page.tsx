@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
@@ -72,10 +73,23 @@ export default function ReportPage() {
                       </option>
                     ))}
                   </select>
+                  {/* A new account has no properties, and the field is required — so without this
+                      the form simply cannot be submitted. It previously said so in grey helper
+                      text with no way to act on it, which reads as "the page is broken" rather
+                      than "one thing is missing". */}
                   {(properties ?? []).length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Add a property first from your dashboard.
-                    </p>
+                    <div
+                      className="mt-2 rounded-md border-l-2 p-3"
+                      style={{ borderColor: "var(--warning)", background: "var(--card)" }}
+                    >
+                      <p className="text-sm font-medium">Add a property first</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        A repair has to belong to an address. Add yours and come straight back.
+                      </p>
+                      <Link href="/customer" className="mt-2 inline-block">
+                        <Button size="sm" type="button">Add a property →</Button>
+                      </Link>
+                    </div>
                   )}
                 </div>
                 <div className="space-y-1.5">

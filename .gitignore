@@ -51,3 +51,7 @@ android/*.keystore
 android/*.jks
 android/app-release-*.aab
 android/app-release-*.apk
+
+# Playwright artefacts — traces and screenshots are large and regenerated per run.
+frontend/playwright-report/
+frontend/test-results/

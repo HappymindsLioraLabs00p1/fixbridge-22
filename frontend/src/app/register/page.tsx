@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useRegister } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,9 @@ export default function RegisterPage() {
   const router = useRouter();
   const register = useRegister();
   const [email, setEmail] = useState("");
+  // Before hydration a submit button performs a native GET and silently discards
+  // the form. See use-hydrated.ts.
+  const hydrated = useHydrated();
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<UserRole>("customer");
@@ -89,7 +93,7 @@ export default function RegisterPage() {
                 {(register.error as ApiError)?.message ?? "Registration failed"}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={register.isPending}>
+            <Button type="submit" className="w-full" disabled={!hydrated || register.isPending}>
               {register.isPending ? "Creating account…" : "Create account"}
             </Button>
           </form>

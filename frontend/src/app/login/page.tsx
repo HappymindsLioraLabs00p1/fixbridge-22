@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useLogin } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ export default function LoginPage() {
   const router = useRouter();
   const login = useLogin();
   const [email, setEmail] = useState("");
+  // Before hydration a submit button performs a native GET and silently discards
+  // the form. See use-hydrated.ts.
+  const hydrated = useHydrated();
   const [password, setPassword] = useState("");
 
   function submit(e: React.FormEvent) {
@@ -65,7 +69,7 @@ export default function LoginPage() {
                 {(login.error as ApiError)?.message ?? "Sign in failed"}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={login.isPending}>
+            <Button type="submit" className="w-full" disabled={!hydrated || login.isPending}>
               {login.isPending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
