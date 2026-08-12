@@ -90,6 +90,11 @@ export function SiteHeader() {
             </>
           ) : (
             <>
+              <Link href="/services" className="hidden sm:inline">
+
+                <Button variant="ghost" size="sm">Services</Button>
+
+              </Link>
               <Link href="/login">
                 <Button variant="ghost" size="sm">
                   Sign In

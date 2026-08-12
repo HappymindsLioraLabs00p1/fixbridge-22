@@ -43,6 +43,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
+                                // The service catalogue is a shop window: someone deciding whether
+                                // to use FixBridge should see what it does and roughly what it
+                                // costs before being asked to register. It exposes aggregate
+                                // prices and counts only — no customer, job or contractor detail.
+                                "/api/catalog",
                                 "/api/webhooks/**",
                                 "/api/local-storage/**",
                                 "/docs/**",

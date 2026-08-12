@@ -390,3 +390,18 @@ export interface ReviewView {
   comment: string | null;
   createdAt: string;
 }
+
+export interface ServiceCard {
+  code: string;
+  name: string;
+  /** Null when too few jobs have been priced to state a range honestly. */
+  typicalLowCents: number | null;
+  typicalHighCents: number | null;
+  /** Sample size behind the range, so the number can be judged. */
+  pricedJobs: number;
+  /** Null for a trade with no reviews — new is not the same as bad. */
+  averageRating: number | null;
+  reviewCount: number;
+  availableContractors: number;
+  bookable: boolean;
+}

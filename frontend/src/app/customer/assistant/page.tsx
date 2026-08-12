@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { RequireRole } from "@/components/require-auth";
 import { ContractorMatches } from "@/components/contractor-matches";
 import { uploadFile } from "@/lib/api";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import {
   useSendChatMessage,
@@ -30,7 +31,14 @@ function Assistant() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [view, setView] = useState<ConversationView | null>(null);
   const [draft, setDraft] = useState("");
+  // Until React attaches, the composer is inert: typed text never reaches state and Send is a
+  // no-op. Showing it as ready was the difference between "the app is thinking" and "the app is
+  // broken". See use-hydrated.ts.
+  const hydrated = useHydrated();
   const [uploading, setUploading] = useState(false);
+  // Whether the conversation could be opened. Without this the screen sits empty and Send does
+  // nothing at all — the user has no way to tell the difference between "thinking" and "broken".
+  const [startFailed, setStartFailed] = useState(false);
 
   const start = useStartConversation();
   const send = useSendChatMessage(conversationId);
@@ -53,13 +61,15 @@ function Assistant() {
         setView(c);
         setBubbles([{ role: "assistant", text: c.message }]);
       },
-      onError: () =>
+      onError: () => {
+        setStartFailed(true);
         setBubbles([
           {
             role: "assistant",
-            text: "I couldn't start a conversation just now. Please refresh and try again.",
+            text: "I couldn't start a conversation just now.",
           },
-        ]),
+        ]);
+      },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -74,7 +84,17 @@ function Assistant() {
   }, [voice.transcript]);
 
   function submit(text: string, imageKeys: string[] = []) {
-    if (!conversationId || (!text.trim() && imageKeys.length === 0)) return;
+    // Returning silently here was the whole bug: with no conversation, every tap of Send did
+    // nothing and said nothing. Say so instead.
+    if (!conversationId) {
+      setStartFailed(true);
+      setBubbles((b) => [
+        ...b,
+        { role: "assistant", text: "I'm not connected yet — tap Retry and send that again." },
+      ]);
+      return;
+    }
+    if (!text.trim() && imageKeys.length === 0) return;
     setBubbles((b) => [...b, { role: "customer", text: text || "Photo sent", images: imageKeys.length }]);
     setDraft("");
     send.mutate(
@@ -171,6 +191,31 @@ function Assistant() {
         </div>
       )}
 
+      {startFailed && (
+        <div className="mb-3 rounded-lg border p-3" style={{ borderColor: "var(--warning)" }}>
+          <p className="text-sm">The assistant didn&apos;t connect. This is usually temporary.</p>
+          <Button
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              setStartFailed(false);
+              opened.current = false;
+              setBubbles([]);
+              start.mutate(undefined, {
+                onSuccess: (c) => {
+                  setConversationId(c.id);
+                  setView(c);
+                  setBubbles([{ role: "assistant", text: c.message }]);
+                },
+                onError: () => setStartFailed(true),
+              });
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* Transcript */}
       <div className="flex-1 space-y-3">
         {bubbles.map((b, i) => (
@@ -255,15 +300,17 @@ function Assistant() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={
-                voice.listening
+                !hydrated
+                  ? "Starting up…"
+                  : voice.listening
                   ? "Listening…"
                   : view?.requiresImage
                     ? "Send a photo, or describe it…"
                     : "Describe the problem…"
               }
-              disabled={busy}
+              disabled={!hydrated || busy}
             />
-            <Button type="submit" disabled={busy || !draft.trim()}>
+            <Button type="submit" disabled={!hydrated || busy || !draft.trim()}>
               Send
             </Button>
           </form>

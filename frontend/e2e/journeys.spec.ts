@@ -84,6 +84,9 @@ test.describe("The AI assistant", () => {
     await page.goto("/customer/assistant");
     const box = page.getByPlaceholder(/describe|problem/i).first();
     await expect(box).toBeVisible({ timeout: 45_000 });
+    // Enabled only once React owns the composer — before that, typing goes nowhere and Send is
+    // inert, which is exactly the "I typed and nothing happened" failure.
+    await expect(box).toBeEnabled({ timeout: 30_000 });
     await box.fill("the cabinet door hinge is loose and rattling, screws backing out, three days");
     await page.getByRole("button", { name: /^send$/i }).first().click();
     await expect(page.getByText(/steps|guide|talk you through/i).first())
@@ -95,6 +98,9 @@ test.describe("The AI assistant", () => {
     await page.goto("/customer/assistant");
     const box = page.getByPlaceholder(/describe|problem/i).first();
     await expect(box).toBeVisible({ timeout: 45_000 });
+    // Enabled only once React owns the composer — before that, typing goes nowhere and Send is
+    // inert, which is exactly the "I typed and nothing happened" failure.
+    await expect(box).toBeEnabled({ timeout: 30_000 });
     await box.fill("I can smell gas near the boiler in my kitchen");
     await page.getByRole("button", { name: /^send$/i }).first().click();
 
@@ -110,6 +116,9 @@ test.describe("The AI assistant", () => {
     await page.goto("/customer/assistant");
     const box = page.getByPlaceholder(/describe|problem/i).first();
     await expect(box).toBeVisible({ timeout: 45_000 });
+    // Enabled only once React owns the composer — before that, typing goes nowhere and Send is
+    // inert, which is exactly the "I typed and nothing happened" failure.
+    await expect(box).toBeEnabled({ timeout: 30_000 });
     await box.fill("I can smell gas near the boiler");
     await page.getByRole("button", { name: /^send$/i }).first().click();
     await expect(page.getByText(/stop|immediate|professional/i).first())
