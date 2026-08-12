@@ -35,6 +35,15 @@ function Assistant() {
   // no-op. Showing it as ready was the difference between "the app is thinking" and "the app is
   // broken". See use-hydrated.ts.
   const hydrated = useHydrated();
+  // A conversation is opened on mount, and a message needs one to be sent *to*. Pressing Send
+  // before it arrives used to return silently, losing the message — on a slow connection that
+  // window is seconds wide.
+  //
+  // Held rather than blocked. Disabling Send until the conversation exists trades a silent failure
+  // for a permanent one: if the id never arrives, the button never works again and the customer
+  // has no way to tell why. Queuing keeps the interface honest — the message is accepted, shown,
+  // and sent the moment there is somewhere to send it.
+  const [queued, setQueued] = useState<{ text: string; imageKeys: string[] } | null>(null);
   const [uploading, setUploading] = useState(false);
   // Whether the conversation could be opened. Without this the screen sits empty and Send does
   // nothing at all — the user has no way to tell the difference between "thinking" and "broken".
@@ -46,15 +55,16 @@ function Assistant() {
   // before it goes, and an auto-send would make that impossible.
   const voice = useVoiceInput();
   const bottom = useRef<HTMLDivElement>(null);
-  // React runs effects twice in development. Without this guard that opens two conversations and
-  // the second silently replaces the first, so the greeting and the transcript disagree.
-  const opened = useRef(false);
-
   // Open a conversation as soon as the screen loads — asking someone to press "start" before they
   // can describe a leak is a pointless extra step.
+  //
+  // Guarded on the mutation's own state, not on a ref. A ref survives the remount React performs
+  // in development, so it blocked the surviving component from ever opening a conversation: the
+  // first instance's request was discarded with its callbacks, the second was refused by the
+  // guard, and Send had nothing to send to for the rest of the session. Guarding on `isIdle`
+  // still prevents a duplicate open, but cannot outlive the component it belongs to.
   useEffect(() => {
-    if (opened.current) return;
-    opened.current = true;
+    if (!start.isIdle) return;
     start.mutate(undefined, {
       onSuccess: (c) => {
         setConversationId(c.id);
@@ -83,18 +93,48 @@ function Assistant() {
     if (voice.transcript) setDraft(voice.transcript);
   }, [voice.transcript]);
 
+  // Adopt the conversation from the mutation's own result, not only from its success callback.
+  // React re-runs effects on mount in development, and a callback belonging to the discarded first
+  // run is dropped — leaving a conversation that was created successfully but never adopted, so
+  // Send had nothing to send to. Reading the result directly survives that.
+  useEffect(() => {
+    if (conversationId || !start.data) return;
+    setConversationId(start.data.id);
+    setView(start.data);
+    setBubbles((b) => (b.length ? b : [{ role: "assistant", text: start.data!.message }]));
+  }, [start.data, conversationId]);
+
+  // Flush anything typed before the conversation existed. The bubble is already on screen, so this
+  // only performs the send — without re-adding it.
+  useEffect(() => {
+    if (!conversationId || !queued) return;
+    const pending = queued;
+    setQueued(null);
+    send.mutate(pending, {
+      onSuccess: (c) => {
+        setView(c);
+        setBubbles((b) => [...b, { role: "assistant", text: c.message }]);
+      },
+      onError: () =>
+        setBubbles((b) => [
+          ...b,
+          { role: "assistant", text: "Something went wrong there. Please try again." },
+        ]),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, queued]);
+
   function submit(text: string, imageKeys: string[] = []) {
-    // Returning silently here was the whole bug: with no conversation, every tap of Send did
-    // nothing and said nothing. Say so instead.
+    if (!text.trim() && imageKeys.length === 0) return;
+
+    // No conversation yet: accept the message, show it, and hold it. Returning silently here was
+    // the original bug — the message vanished and the button looked broken.
     if (!conversationId) {
-      setStartFailed(true);
-      setBubbles((b) => [
-        ...b,
-        { role: "assistant", text: "I'm not connected yet — tap Retry and send that again." },
-      ]);
+      setBubbles((b) => [...b, { role: "customer", text: text || "Photo sent", images: imageKeys.length }]);
+      setDraft("");
+      setQueued({ text, imageKeys });
       return;
     }
-    if (!text.trim() && imageKeys.length === 0) return;
     setBubbles((b) => [...b, { role: "customer", text: text || "Photo sent", images: imageKeys.length }]);
     setDraft("");
     send.mutate(
@@ -199,7 +239,6 @@ function Assistant() {
             className="mt-2"
             onClick={() => {
               setStartFailed(false);
-              opened.current = false;
               setBubbles([]);
               start.mutate(undefined, {
                 onSuccess: (c) => {
@@ -303,13 +342,16 @@ function Assistant() {
                 !hydrated
                   ? "Starting up…"
                   : voice.listening
-                  ? "Listening…"
-                  : view?.requiresImage
-                    ? "Send a photo, or describe it…"
-                    : "Describe the problem…"
+                    ? "Listening…"
+                    : view?.requiresImage
+                      ? "Send a photo, or describe it…"
+                      : "Describe the problem…"
               }
               disabled={!hydrated || busy}
             />
+            {/* Deliberately not gated on the conversation existing. Blocking Send until an id
+                arrives trades a message that vanishes for a button that never works — the same
+                dead end, harder to diagnose. A message sent early is queued and flushed instead. */}
             <Button type="submit" disabled={!hydrated || busy || !draft.trim()}>
               Send
             </Button>
