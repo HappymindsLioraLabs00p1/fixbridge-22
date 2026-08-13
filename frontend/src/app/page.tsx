@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { brand } from "@/config/brand";
+import { brand, copyrightLine } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { MascotAssistant } from "@/components/mascot-assistant";
 
@@ -34,19 +34,20 @@ const FEATURES = [
   { t: "Fast turnaround", d: "First bid under 48 hrs avg." },
 ];
 
-const STATS = [
-  { v: "2,847", l: "Jobs completed" },
-  { v: "4.9★", l: "Average rating" },
-  { v: "500+", l: "Vetted contractors" },
-  { v: "<48h", l: "Avg. first bid" },
+// Removed: invented figures ("2,847 jobs completed", "4.9 average rating", "500+ contractors").
+// The real totals are single digits. Publishing numbers nobody earned is the fastest way to lose
+// the trust the safety gate is built to create — and the first customer to ask about them finds
+// out. These return when the platform has figures worth quoting.
+const PROMISES = [
+  { v: "Free", l: "To post a repair" },
+  { v: "Licensed", l: "Insurance verified before dispatch" },
+  { v: "Upfront", l: "Visit fee shown before you commit" },
+  { v: "Safety first", l: "No DIY steps for dangerous jobs" },
 ];
 
-const REVIEWS = [
-  { q: "My ceiling was leaking the night before Thanksgiving. FixBridge had three bids by morning — and the contractor who won was incredible.", n: "Maria Santos", loc: "Astoria, Queens", saved: "$800 saved vs. initial quote" },
-  { q: "I thought I needed a full HVAC replacement. The AI flagged it as a capacitor issue — $180 fix. Nobody tried to upsell me.", n: "Tony Marchetti", loc: "Huntington, Long Island", saved: "$2,400 saved vs. initial quote" },
-  { q: "The AI broke down my panel upgrade better than any contractor I'd spoken to. I finally understood what I was paying for.", n: "Devon Williams", loc: "Flushing, Queens", saved: "$1,100 saved vs. initial quote" },
-  { q: "I got four bids within 24 hours of posting. The AI estimate was spot on — the winning contractor came in right at the middle of the range.", n: "Rachel Kim", loc: "Park Slope, Brooklyn", saved: "$650 saved vs. initial quote" },
-];
+// Removed: four invented testimonials attributed to named people in named neighbourhoods, each
+// with a savings figure. They described customers who do not exist. Real reviews are collected
+// through the rating flow and will appear here once there are enough to be representative.
 
 export default function Home() {
   return (
@@ -179,7 +180,7 @@ export default function Home() {
 
         {/* Stats */}
         <div className="mt-14 grid grid-cols-2 gap-6 border-t pt-10 sm:grid-cols-4">
-          {STATS.map((s) => (
+          {PROMISES.map((s) => (
             <div key={s.l}>
               <div className="font-display text-5xl text-primary" style={{ fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
               <div className="mt-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
@@ -188,26 +189,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Reviews */}
+      {/* Where testimonials will go. Deliberately empty rather than filled with invented ones:
+          a section headed "REAL PEOPLE. REAL STORIES." above fictional customers is the one thing
+          on this page that could not be defended if anyone asked. */}
       <section className="border-t bg-secondary">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
-            <p className="font-mono text-xs uppercase tracking-widest text-primary">Reviews</p>
-            <h2 className="font-display text-4xl leading-none sm:text-5xl">REAL PEOPLE.<br />REAL STORIES.</h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {REVIEWS.map((r) => (
-              <figure key={r.n} className="flex flex-col rounded-lg border bg-card p-6">
-                <blockquote className="text-lg leading-snug">“{r.q}”</blockquote>
-                <figcaption className="mt-5 flex items-end justify-between gap-4 border-t pt-4">
-                  <div>
-                    <div className="font-semibold">{r.n}</div>
-                    <div className="text-sm text-muted-foreground">{r.loc}</div>
-                  </div>
-                  <div className="text-right font-mono text-xs uppercase tracking-wide text-primary">{r.saved}</div>
-                </figcaption>
-              </figure>
-            ))}
+          <p className="font-mono text-xs uppercase tracking-widest text-primary">How it works</p>
+          <h2 className="mt-4 font-display text-4xl leading-none sm:text-5xl">
+            SAFETY FIRST.<br />THEN THE REPAIR.
+          </h2>
+          <p className="mt-5 max-w-xl text-muted-foreground">
+            Every job is checked before any instruction is given. If it involves gas, live
+            electrics or anything structural, FixBridge will not talk you through it — it finds
+            you a licensed professional instead.
+          </p>
+          <div className="mt-8">
+            <Link href="/services"><Button size="lg" variant="outline">See what we cover →</Button></Link>
           </div>
         </div>
       </section>
@@ -242,6 +239,9 @@ export default function Home() {
             <div className="font-mono text-[11px] uppercase tracking-widest text-background/50">
               {brand.region} · Est. {brand.established}
             </div>
+            {/* Falls back to the product name until a registered entity is configured — a blank
+                line looks unfinished, and inventing a company name would be worse. */}
+            <div className="text-[11px] text-background/50">{copyrightLine()}</div>
           </div>
         </div>
       </footer>
