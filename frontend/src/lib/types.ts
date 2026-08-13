@@ -405,3 +405,17 @@ export interface ServiceCard {
   availableContractors: number;
   bookable: boolean;
 }
+
+export interface DispatchQuote {
+  jobId: string;
+  /** FixBridge coordination fee. Zero during beta — and explicitly not the visit fee. */
+  fixbridgeFeeCents: number;
+  /** The contractor's own diagnostic charge. Null when none is published yet. */
+  visitFeeLowCents: number | null;
+  visitFeeHighCents: number | null;
+  /** STANDARD | WEEKEND | AFTER_HOURS | EMERGENCY — why this rate applies. */
+  visitFeeBasis: string | null;
+  visitFeeKnown: boolean;
+  availableContractors: number;
+  explanation: string;
+}
