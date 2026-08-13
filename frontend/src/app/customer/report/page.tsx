@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UrgencyBadge } from "@/components/status-badge";
+import { DispatchQuoteCard } from "@/components/dispatch-quote";
 import { formatRange } from "@/lib/utils";
 import type { JobDetail } from "@/lib/types";
 
@@ -186,11 +187,58 @@ function AssessmentResult({ job, onContinue }: { job: JobDetail; onContinue: () 
             {e?.priceAvailable ? formatRange(e.retailLowCents, e.retailHighCents) : "On-site assessment required"}
           </p>
           <p className="text-xs text-muted-foreground">{e?.disclaimer}</p>
-          <Button className="mt-2" onClick={onContinue}>
-            Continue to scheduling &amp; payment
-          </Button>
         </CardContent>
       </Card>
+
+      <ChooseRoute job={job} onDispatch={onContinue} />
     </div>
+  );
+}
+
+/**
+ * DIY or professional, and — if professional — what the visit will cost before anyone is sent.
+ *
+ * <p>The visit fee belongs here rather than on the dispatch screen. By the time a job reaches
+ * dispatch the homeowner has already committed; a fee first seen at that point is a fee they were
+ * told about rather than one they agreed to.
+ *
+ * <p>DIY is only offered when the assessment actually cleared it. A job the safety gate refused is
+ * not presented as a choice, because offering it invites the attempt.
+ */
+function ChooseRoute({ job, onDispatch }: { job: JobDetail; onDispatch: () => void }) {
+  const [route, setRoute] = useState<"undecided" | "professional">("undecided");
+  const a = job.assessment;
+  const diyAllowed = Boolean(a?.safeDiyAllowed) && !a?.professionalRequired;
+
+  if (route === "professional") {
+    return (
+      <DispatchQuoteCard
+        jobId={job.id}
+        trade={a?.recommendedTrade ?? a?.category ?? null}
+        emergency={a?.urgency === "emergency"}
+        onAccept={onDispatch}
+      />
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>How would you like to proceed?</CardTitle>
+        <CardDescription>
+          {diyAllowed
+            ? "This one looks safe to attempt yourself — or we can send a professional."
+            : "This needs a qualified professional."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        {diyAllowed && (
+          <Link href="/customer/assistant">
+            <Button variant="outline">Guide me through it</Button>
+          </Link>
+        )}
+        <Button onClick={() => setRoute("professional")}>Request a professional</Button>
+      </CardContent>
+    </Card>
   );
 }

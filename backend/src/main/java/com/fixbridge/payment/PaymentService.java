@@ -74,6 +74,25 @@ public class PaymentService {
                 .orElseThrow(() -> ApiException.badRequest("Unknown service type"));
 
         Payment payment = newPayment(job.getId(), user.id(), PaymentType.dispatch_fee, fee.getCustomerPriceCents());
+
+        // A waived fee still has to reach dispatch.
+        //
+        // Stripe will not create a Checkout Session for zero, and even where one appeared to
+        // succeed the job would sit at awaiting_service_payment forever: the transition to
+        // dispatch is driven by the payment webhook, and no webhook fires for money that never
+        // moved. A beta promotion would have silently stopped every job from being dispatched.
+        //
+        // The payment is still recorded, at zero, so the job's timeline shows the fee was waived
+        // rather than showing a gap where a payment should be.
+        if (fee.getCustomerPriceCents() <= 0) {
+            payment.setStatus(PaymentStatus.succeeded);
+            payments.save(payment);
+            jobService.transition(job, JobStatus.paid_for_dispatch, null);
+            jobService.transition(job, JobStatus.awaiting_contractor, null);
+            log.info("Dispatch fee waived for job {} — entering dispatch without a charge", jobId);
+            return new PaymentDtos.CheckoutView(null, null, 0L, "USD");
+        }
+
         StripeClient.CheckoutSession session = stripe.createCheckout(
                 PaymentType.dispatch_fee, fee.getCustomerPriceCents(), "USD", payment.getId().toString());
         payment.setStripeCheckoutSession(session.sessionId());
