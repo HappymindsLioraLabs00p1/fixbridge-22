@@ -7,7 +7,7 @@ parses prose is a UI that breaks whenever the model rephrases itself.
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class SafetyLevel(str, Enum):
@@ -17,6 +17,37 @@ class SafetyLevel(str, Enum):
     PROFESSIONAL_REQUIRED = "PROFESSIONAL_REQUIRED"
     EMERGENCY = "EMERGENCY"
     INSUFFICIENT_INFORMATION = "INSUFFICIENT_INFORMATION"
+
+
+class RiskLevel(str, Enum):
+    """How the safety verdict is shown to a homeowner.
+
+    A traffic light is understood at a glance in a way that PROFESSIONAL_REQUIRED is not, which
+    matters when the person reading it is standing next to the problem.
+
+    Presentation only. It is derived from the verdict rather than decided separately, so there is
+    no second opinion that could disagree with the gate — the verdict remains the single authority
+    on whether a repair plan may exist.
+    """
+
+    GREEN = "GREEN"    # safe to guide
+    YELLOW = "YELLOW"  # not enough known to say it is safe
+    RED = "RED"        # a professional, or an emergency
+
+
+#: The verdict a homeowner sees, from the verdict the gate reached. Anything not listed is treated
+#: as RED: an unrecognised verdict must never present as safe.
+RISK_FOR_SAFETY: dict[SafetyLevel, RiskLevel] = {
+    SafetyLevel.SAFE_DIY: RiskLevel.GREEN,
+    SafetyLevel.INSUFFICIENT_INFORMATION: RiskLevel.YELLOW,
+    SafetyLevel.PROFESSIONAL_REQUIRED: RiskLevel.RED,
+    SafetyLevel.EMERGENCY: RiskLevel.RED,
+}
+
+
+def risk_for(level: SafetyLevel) -> RiskLevel:
+    """Fails safe: an unknown verdict is RED, never GREEN."""
+    return RISK_FOR_SAFETY.get(level, RiskLevel.RED)
 
 
 class RepairState(str, Enum):
@@ -81,6 +112,16 @@ class SafetyAssessment(BaseModel):
     hazards: List[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
     disclaimer: str = DISCLAIMER
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def risk(self) -> RiskLevel:
+        """The traffic light for this verdict.
+
+        Computed, so it is serialised for clients but can never be set independently of the verdict
+        it describes. A settable field would allow a response claiming GREEN beside an EMERGENCY.
+        """
+        return risk_for(self.level)
 
 
 class RepairStep(BaseModel):
