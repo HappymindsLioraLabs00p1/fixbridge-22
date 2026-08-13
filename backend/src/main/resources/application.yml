@@ -10,9 +10,12 @@ spring:
     # provider hands out separately (Render, Neon, Supabase, Cloud SQL…), so no manual assembly.
     # DB_PARAMS carries driver options — hosted Postgres generally REQUIRES TLS, e.g. Neon and
     # Supabase both need "?sslmode=require". Empty by default so local development stays plaintext.
-    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}${DB_PARAMS:}}
-    username: ${DB_USER:fixbridge}
-    password: ${DB_PASSWORD:fixbridge}
+    #url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}${DB_PARAMS:}}
+    #username: ${DB_USER:fixbridge}
+    #password: ${DB_PASSWORD:fixbridge}
+    url: ${DB_URL:ep-holy-waterfall-ax7qkz0z-pooler.c-4.us-east-2.aws.neon.tech}
+    username: ${DB_USER:neondb_owner}
+    password: ${DB_PASSWORD:npg_eKplWREV2jb1}
     hikari:
       # Concurrent sign-ins each need a connection. Too few and requests queue behind the pool;
       # too many and a small managed Postgres refuses connections outright. Hosted free tiers
