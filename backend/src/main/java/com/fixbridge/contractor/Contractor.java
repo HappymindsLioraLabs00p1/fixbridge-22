@@ -48,6 +48,33 @@ public class Contractor {
     @Column(name = "min_trip_charge_cents")
     private Long minTripChargeCents = 0L;
 
+    // The published rate card. A homeowner is shown one of these before dispatch and authorises
+    // that exact amount, so each is the total for its circumstance rather than an increment —
+    // quoting a base plus a surcharge invites a bill that doesn't match what was agreed.
+    //
+    // This is fee B in the pricing model: the contractor's own visit charge. It is distinct from
+    // the FixBridge coordination fee, which may be waived during beta, and from the repair
+    // estimate, which is agreed after diagnosis.
+    @Column(name = "visit_fee_cents", nullable = false)
+    private Long visitFeeCents = 0L;
+
+    @Column(name = "emergency_fee_cents", nullable = false)
+    private Long emergencyFeeCents = 0L;
+
+    @Column(name = "after_hours_fee_cents", nullable = false)
+    private Long afterHoursFeeCents = 0L;
+
+    @Column(name = "weekend_fee_cents", nullable = false)
+    private Long weekendFeeCents = 0L;
+
+    /** Charged on a late cancellation or a wasted trip. */
+    @Column(name = "cancellation_fee_cents", nullable = false)
+    private Long cancellationFeeCents = 0L;
+
+    /** The floor for labour on any job, before parts. */
+    @Column(name = "minimum_labor_cents", nullable = false)
+    private Long minimumLaborCents = 0L;
+
     @Column(name = "travel_radius_miles")
     private Integer travelRadiusMiles = 25;
 
