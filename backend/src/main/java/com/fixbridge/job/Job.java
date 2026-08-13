@@ -60,6 +60,19 @@ public class Job {
     @Column(name = "payout_hold_reason", columnDefinition = "text")
     private String payoutHoldReason;
 
+    // The hold on the homeowner's card for the contractor's visit fee. Not a payment: nothing is
+    // taken until a contractor accepts. The authorised amount is kept alongside so capture uses
+    // the figure the homeowner actually agreed to rather than one recalculated later.
+    @Column(name = "visit_fee_intent_id")
+    private String visitFeeIntentId;
+
+    @Column(name = "visit_fee_authorized_cents")
+    private Long visitFeeAuthorizedCents;
+
+    /** Set when a contractor accepted and the hold was taken. Null while merely reserved. */
+    @Column(name = "visit_fee_captured_at")
+    private java.time.Instant visitFeeCapturedAt;
+
     // Lightweight referral / property-opportunity fields
     @Column(name = "partner_code")
     private String partnerCode;

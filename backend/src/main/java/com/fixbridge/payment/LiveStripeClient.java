@@ -146,4 +146,55 @@ public class LiveStripeClient implements StripeClient {
         log.error("Stripe error during {}: {}", action, e.getMessage());
         return new ApiException(HttpStatus.BAD_GATEWAY, "Payment provider error. Please try again.");
     }
+    /**
+     * A PaymentIntent with manual capture: the card is checked and the funds reserved, but nothing
+     * is taken until a contractor accepts. Automatic capture would charge a homeowner for a visit
+     * that might never happen, and refunding that is not the same as never having charged it.
+     */
+    @Override
+    public Authorization authorize(long amountCents, String currency, String referenceId) {
+        try {
+            com.stripe.model.PaymentIntent intent = com.stripe.model.PaymentIntent.create(
+                    com.stripe.param.PaymentIntentCreateParams.builder()
+                            .setAmount(amountCents)
+                            .setCurrency(currency)
+                            .setCaptureMethod(com.stripe.param.PaymentIntentCreateParams
+                                    .CaptureMethod.MANUAL)
+                            .putMetadata("reference_id", referenceId == null ? "" : referenceId)
+                            .putMetadata("purpose", "contractor_visit_fee")
+                            .build());
+            return new Authorization(intent.getId(), intent.getClientSecret(), amountCents);
+        } catch (StripeException e) {
+            throw paymentError("authorize visit fee", e);
+        }
+    }
+
+    @Override
+    public void captureAuthorization(String paymentIntentId, long amountCents) {
+        try {
+            com.stripe.model.PaymentIntent intent =
+                    com.stripe.model.PaymentIntent.retrieve(paymentIntentId);
+            // Stripe permits capturing less than authorised but never more. Passing the amount
+            // explicitly keeps the captured figure tied to what the homeowner agreed to.
+            intent.capture(com.stripe.param.PaymentIntentCaptureParams.builder()
+                    .setAmountToCapture(amountCents)
+                    .build());
+        } catch (StripeException e) {
+            throw paymentError("capture visit fee", e);
+        }
+    }
+
+    @Override
+    public void releaseAuthorization(String paymentIntentId, String reason) {
+        try {
+            com.stripe.model.PaymentIntent intent =
+                    com.stripe.model.PaymentIntent.retrieve(paymentIntentId);
+            intent.cancel(com.stripe.param.PaymentIntentCancelParams.builder()
+                    .setCancellationReason(com.stripe.param.PaymentIntentCancelParams
+                            .CancellationReason.ABANDONED)
+                    .build());
+        } catch (StripeException e) {
+            throw paymentError("release visit fee hold", e);
+        }
+    }
 }

@@ -44,4 +44,40 @@ public class StubStripeClient implements StripeClient {
         String session = "cs_sub_stub_" + UUID.randomUUID().toString().replace("-", "");
         return new CheckoutSession(session, "https://stub.checkout.local/subscribe/" + session);
     }
+    /**
+     * Records the hold in memory so tests can assert the lifecycle — authorise, then capture or
+     * release, never both, and never capture more than was held.
+     */
+    private final java.util.Map<String, Long> held = new java.util.concurrent.ConcurrentHashMap<>();
+
+    @Override
+    public Authorization authorize(long amountCents, String currency, String referenceId) {
+        String intent = "pi_stub_auth_" + UUID.randomUUID().toString().replace("-", "");
+        held.put(intent, amountCents);
+        return new Authorization(intent, "cs_stub_secret_" + intent, amountCents);
+    }
+
+    @Override
+    public void captureAuthorization(String paymentIntentId, long amountCents) {
+        Long authorised = held.remove(paymentIntentId);
+        if (authorised == null) {
+            throw new IllegalStateException("No hold to capture: " + paymentIntentId);
+        }
+        if (amountCents > authorised) {
+            // Capturing more than the homeowner saw and agreed to is indefensible, so the stub
+            // refuses it too — a bug that only appears against live Stripe is a bug found late.
+            throw new IllegalStateException(
+                    "Cannot capture " + amountCents + " against a hold of " + authorised);
+        }
+    }
+
+    @Override
+    public void releaseAuthorization(String paymentIntentId, String reason) {
+        held.remove(paymentIntentId);
+    }
+
+    /** Visible for testing: how much is still on hold. */
+    public Long heldAmount(String paymentIntentId) {
+        return held.get(paymentIntentId);
+    }
 }
