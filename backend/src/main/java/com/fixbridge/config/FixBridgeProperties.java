@@ -66,7 +66,21 @@ public record FixBridgeProperties(
 
     public record Storage(String bucket, long signedUrlTtlMinutes, String publicBaseUrl,
                           /** Stub storage (local object store) independently of the rest. */
-                          boolean stubMode) {}
+                          boolean stubMode,
+                          /**
+                           * Which live backend serves signed URLs: {@code gcs} or {@code supabase}.
+                           * Ignored entirely in stub mode. Selecting rather than replacing means a
+                           * misconfigured Supabase project cannot take GCS down with it.
+                           */
+                          String provider,
+                          Supabase supabase) {}
+
+    /**
+     * Supabase Storage. The service key is a server-side credential with full bucket access — it is
+     * read from the environment and must never reach the browser, which is why signing happens here
+     * rather than in the client.
+     */
+    public record Supabase(String url, String serviceKey) {}
 
     public record Twilio(String accountSid, String authToken, String fromNumber) {}
 

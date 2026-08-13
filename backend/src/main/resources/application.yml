@@ -128,6 +128,14 @@ fixbridge:
     # In stub mode, uploads/downloads route to this backend's own local object store.
     public-base-url: ${STORAGE_PUBLIC_BASE_URL:http://localhost:8080}
     stub-mode: ${STORAGE_STUB_MODE:${INTEGRATIONS_STUB_MODE:true}}
+    # Which live backend signs URLs once stub mode is off: gcs | supabase. Defaults to gcs so an
+    # existing deployment keeps the behaviour it already has.
+    provider: ${STORAGE_PROVIDER:gcs}
+    supabase:
+      url: ${SUPABASE_URL:}
+      # Service-role key. Server-side only — it grants full bucket access and must never be sent
+      # to the browser.
+      service-key: ${SUPABASE_SERVICE_KEY:}
   twilio:
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}

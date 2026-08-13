@@ -5,7 +5,7 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.HttpMethod;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -16,7 +16,12 @@ import java.util.UUID;
  * {@code fixbridge.storage.stub-mode=false}. Uses application default credentials (Workload Identity in GKE).
  */
 @Service
-@ConditionalOnProperty(prefix = "fixbridge.storage", name = "stub-mode", havingValue = "false")
+// Live storage, unless another provider has been selected. Narrowed rather than made primary so
+// exactly one StorageService bean exists: with both eligible the context fails to start, and
+// making one primary would hide which is actually serving.
+@ConditionalOnExpression(
+        "'${fixbridge.storage.stub-mode:true}' == 'false' "
+      + "and '${fixbridge.storage.provider:gcs}' != 'supabase'")
 public class GcsStorageService implements StorageService {
 
     private final Storage storage;
