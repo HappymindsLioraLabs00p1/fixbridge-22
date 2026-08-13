@@ -13,7 +13,8 @@ spring:
     #url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fixbridge}${DB_PARAMS:}}
     #username: ${DB_USER:fixbridge}
     #password: ${DB_PASSWORD:fixbridge}
-    url: ${DB_URL:ep-holy-waterfall-ax7qkz0z-pooler.c-4.us-east-2.aws.neon.tech}
+    #url: ${DB_URL:ep-holy-waterfall-ax7qkz0z-pooler.c-4.us-east-2.aws.neon.tech}
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:neondb}${DB_PARAMS:}}
     username: ${DB_USER:neondb_owner}
     password: ${DB_PASSWORD:npg_eKplWREV2jb1}
     hikari:
@@ -40,7 +41,7 @@ spring:
     locations: classpath:db/migration
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
 
 server:
@@ -58,7 +59,7 @@ springdoc:
     enabled: ${API_DOCS_ENABLED:false}
     path: /docs
 
-management:
+servicemanagement:
   endpoints:
     web:
       exposure:
