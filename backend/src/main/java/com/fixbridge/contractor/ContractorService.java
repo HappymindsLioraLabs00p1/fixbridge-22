@@ -28,6 +28,9 @@ import java.util.UUID;
 @Service
 public class ContractorService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(ContractorService.class);
+
     private final ContractorRepository contractors;
     private final JobService jobService;
     private final JobInvitationRepository invitations;
@@ -40,12 +43,16 @@ public class ContractorService {
     private final ComplianceService compliance;
     private final FixBridgeProperties props;
 
+    private final com.fixbridge.payment.VisitFeeHoldService visitFeeHolds;
+
     public ContractorService(ContractorRepository contractors, JobService jobService,
                              JobInvitationRepository invitations, BidRepository bids,
                              PropertyRepository properties, AiAssessmentRepository assessments,
                              StripeClient stripe, com.fixbridge.notification.NotificationService notifications,
                              com.fixbridge.job.CompletionReportRepository completionReports,
-                             ComplianceService compliance, FixBridgeProperties props) {
+                             ComplianceService compliance, FixBridgeProperties props,
+                             com.fixbridge.payment.VisitFeeHoldService visitFeeHolds) {
+        this.visitFeeHolds = visitFeeHolds;
         this.contractors = contractors;
         this.jobService = jobService;
         this.invitations = invitations;
@@ -129,6 +136,20 @@ public class ContractorService {
         invitation.setStatus(InvitationStatus.accepted);
         invitations.save(invitation);
         jobService.transition(job, JobStatus.bid_received, user.id());
+
+        // A contractor has committed to attend, so the visit fee the homeowner authorised is now
+        // owed and is taken. Until this point it was only reserved.
+        //
+        // Deliberately not fatal. The contractor has accepted and the job must proceed; failing
+        // the acceptance because a card capture did not go through would punish them for the
+        // homeowner's payment problem. The hold stays in place and can be captured or released by
+        // an admin — money left reserved is recoverable, a lost acceptance is not.
+        try {
+            visitFeeHolds.capture(job.getId());
+        } catch (Exception e) {
+            log.warn("Visit fee capture failed for job {} after contractor acceptance: {}",
+                    job.getId(), e.getMessage());
+        }
     }
 
     /** Contractor submits completion proof. Customer/admin then confirms before payout. */
