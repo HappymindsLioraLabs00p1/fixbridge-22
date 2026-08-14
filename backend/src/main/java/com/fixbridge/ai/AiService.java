@@ -97,7 +97,8 @@ public class AiService {
      */
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<AiAssessmentEntity> retryable(int limit) {
-        return repository.findRetryable(org.springframework.data.domain.PageRequest.of(0, limit));
+        return repository.findByStatusOrderByLastAttemptAtAsc(AssessmentStatus.pending,
+                org.springframework.data.domain.PageRequest.of(0, limit));
     }
 
     private static boolean isImage(String key) {
