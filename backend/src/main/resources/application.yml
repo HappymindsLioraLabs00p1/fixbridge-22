@@ -18,7 +18,7 @@ spring:
     # No default. A password committed once stays in git history even after it is deleted, and
     # GitHub's secret scanning would disable the Neon role within minutes of the push. Set
     # DB_PASSWORD in backend/Environment locally (gitignored) or in the hosting dashboard.
-    password: ${DB_PASSWORD:}
+    password: ${DB_PASSWORD:npg_eKplWREV2jb1}
     hikari:
       # Concurrent sign-ins each need a connection. Too few and requests queue behind the pool;
       # too many and a small managed Postgres refuses connections outright. Hosted free tiers
