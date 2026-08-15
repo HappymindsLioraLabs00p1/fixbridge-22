@@ -21,4 +21,7 @@ public final class ProposalDtos {
             String terms,
             ProposalStatus status
     ) {}
+
+    /** Why the customer turned it down. Optional — a decline is valid without an explanation. */
+    public record DeclineRequest(String reason) {}
 }

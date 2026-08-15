@@ -35,6 +35,15 @@ public class Proposal {
     @Column(name = "job_id", nullable = false)
     private UUID jobId;
 
+    /**
+     * The contractor bid this price was derived from.
+     *
+     * <p>Nullable: proposals created before this column existed have no bid recorded, and inventing
+     * one retrospectively would be a guess. New proposals always carry it.
+     */
+    @Column(name = "bid_id")
+    private UUID bidId;
+
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(columnDefinition = "proposal_status", nullable = false)
     private ProposalStatus status = ProposalStatus.draft;

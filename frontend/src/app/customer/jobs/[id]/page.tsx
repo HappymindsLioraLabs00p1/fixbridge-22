@@ -13,6 +13,7 @@ import {
   useDispatchCheckout,
   useJob,
   useProposals,
+  useDeclineProposal,
   useStubCheckout,
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ export default function JobDetailPage() {
   const { data: proposals } = useProposals(jobId);
   const dispatch = useDispatchCheckout(jobId);
   const approve = useApproveProposal(jobId);
+  const decline = useDeclineProposal(jobId);
   const [serviceType, setServiceType] = useState(SERVICE_OPTIONS[0].value);
   const [checkout, setCheckout] = useState<CheckoutView | null>(null);
 
@@ -148,14 +150,42 @@ export default function JobDetailPage() {
                       <p className="text-2xl font-bold">{formatCents(p.retailTotalCents)}</p>
                       {p.timeline && <p className="text-sm text-muted-foreground">Timeline: {p.timeline}</p>}
                       {p.status === "sent" ? (
-                        <Button
-                          disabled={approve.isPending}
-                          onClick={() => approve.mutate(p.proposalId, { onSuccess: setCheckout })}
-                        >
-                          {approve.isPending ? "Preparing checkout…" : "Approve & pay"}
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            disabled={approve.isPending || decline.isPending}
+                            onClick={() => approve.mutate(p.proposalId, { onSuccess: setCheckout })}
+                          >
+                            {approve.isPending ? "Preparing checkout…" : "Approve & pay"}
+                          </Button>
+                          {/* Turning it down must be as available as accepting it — a price you
+                              cannot refuse is not a quote. Nothing is charged either way. */}
+                          <Button
+                            variant="outline"
+                            disabled={approve.isPending || decline.isPending}
+                            onClick={() => decline.mutate(p.proposalId)}
+                          >
+                            {decline.isPending ? "Declining…" : "Decline"}
+                          </Button>
+                        </div>
                       ) : (
-                        <p className="text-sm font-medium capitalize text-muted-foreground">{p.status}</p>
+                        // `capitalize` title-cases every word, which is right for a bare status
+                        // like "approved" and wrong for a sentence — it rendered as "You Declined
+                        // This Price".
+                        p.status === "declined" ? (
+                          <p className="text-sm font-medium text-muted-foreground">
+                            You declined this price
+                          </p>
+                        ) : (
+                          <p className="text-sm font-medium capitalize text-muted-foreground">
+                            {p.status}
+                          </p>
+                        )
+                      )}
+                      {(approve.error || decline.error) && (
+                        <p className="text-sm text-destructive">
+                          {(approve.error as ApiError | null)?.message ??
+                            (decline.error as ApiError | null)?.message}
+                        </p>
                       )}
                     </div>
                   ))}

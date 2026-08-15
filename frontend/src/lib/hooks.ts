@@ -119,6 +119,22 @@ export function useStubCheckout(jobId: string) {
   };
 }
 
+/**
+ * Turn a proposal down. Nothing is charged and no contractor is paid — the job goes back to the
+ * queue so a new price can be put together.
+ */
+export function useDeclineProposal(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (proposalId: string) =>
+      api.post<void>(`/api/proposals/${proposalId}/decline`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["proposals", jobId] });
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+    },
+  });
+}
+
 export function useProposals(jobId: string) {
   return useQuery({
     queryKey: ["proposals", jobId],

@@ -65,10 +65,30 @@ public class AdminService {
         this.compliance = compliance;
     }
 
-    /** Jobs that have paid for dispatch and are awaiting contractor assignment. */
+    /**
+     * Jobs still waiting on something an admin does.
+     *
+     * <p>Filtering to awaiting_contractor alone made a job vanish from this queue the moment a
+     * contractor bid on it: the bid moves the job to bid_received, and bid_received is exactly the
+     * state where an admin has to act — turning that bid into a customer proposal. Bids were being
+     * submitted into a queue nobody could see.
+     *
+     * <p>contractor_invited belongs here too. Invitations go out and may all be ignored, and a job
+     * nobody answered still needs a person to widen the search.
+     */
+    /** Proposal states that still stand. Declined and expired are history and block nothing. */
+    private static final java.util.Set<ProposalStatus> LIVE = java.util.EnumSet.of(
+            ProposalStatus.draft, ProposalStatus.sent, ProposalStatus.approved);
+
+    private static final java.util.Set<JobStatus> NEEDS_ADMIN = java.util.EnumSet.of(
+            JobStatus.awaiting_contractor,
+            JobStatus.contractor_invited,
+            JobStatus.bid_received);
+
+    /** Jobs awaiting contractor assignment, or carrying a bid that needs turning into a proposal. */
     @Transactional(readOnly = true)
     public List<AdminDtos.AdminJobView> dispatchQueue() {
-        return jobs.findByStatus(JobStatus.awaiting_contractor).stream()
+        return jobs.findByStatusIn(NEEDS_ADMIN).stream()
                 .map(this::toAdminJobView)
                 .toList();
     }
@@ -144,10 +164,21 @@ public class AdminService {
             throw ApiException.badRequest("Bid does not belong to this job");
         }
 
+        // A job carries one live proposal. Two would mean two prices for one piece of work, and
+        // whichever the customer approved is the one that would bill them. Declined and expired
+        // proposals are history and deliberately do not block a fresh one — re-proposing after a
+        // decline is the point of declining.
+        boolean alreadyLive = proposals.findByJobId(jobId).stream().anyMatch(p -> LIVE.contains(p.getStatus()));
+        if (alreadyLive) {
+            throw ApiException.conflict(
+                    "This job already has a live proposal — the customer must decline it before another is sent");
+        }
+
         long retail = pricingEngine.retailForNet(bid.getNetTotalCents());
 
         Proposal proposal = new Proposal();
         proposal.setJobId(jobId);
+        proposal.setBidId(bid.getId());
         proposal.setStatus(ProposalStatus.sent);
         proposal.setScope(req.scope());
         proposal.setRetailTotalCents(retail);
