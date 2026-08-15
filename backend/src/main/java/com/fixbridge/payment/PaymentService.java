@@ -41,13 +41,16 @@ public class PaymentService {
     private final RefundRepository refunds;
     private final DisputeRepository disputeRepository;
     private final com.fixbridge.audit.AuditService audit;
+    private final com.fixbridge.config.FixBridgeProperties props;
 
     public PaymentService(PaymentRepository payments, DispatchFeeRepository dispatchFees,
                           ProposalRepository proposals, BidRepository bids, ContractorRepository contractors,
                           TransferRepository transfers, StripeClient stripe, JobService jobService,
                           com.fixbridge.notification.NotificationService notifications,
                           RefundRepository refunds, DisputeRepository disputeRepository,
-                          com.fixbridge.audit.AuditService audit) {
+                          com.fixbridge.audit.AuditService audit,
+                          com.fixbridge.config.FixBridgeProperties props) {
+        this.props = props;
         this.payments = payments;
         this.dispatchFees = dispatchFees;
         this.proposals = proposals;
@@ -146,6 +149,61 @@ public class PaymentService {
             }
             default -> log.info("No job transition for payment type {}", payment.getType());
         }
+    }
+
+    // ---- Stub-mode checkout completion ----
+    //
+    // Stripe advances a job through the webhook, and in stub mode no webhook can ever fire: there is
+    // no Stripe to send one. A stub checkout therefore stranded its job at awaiting_service_payment
+    // permanently, which reads as "no contractor is available" rather than "nobody has paid".
+    //
+    // These stand in for the webhook, and only for it. They deliberately do NOT re-implement the
+    // transition — they delegate to handlePaidCheckout, so the state a stub payment reaches is the
+    // same state a real one reaches, decided in one place. Both are refused outright when Stripe is
+    // live, so production behaviour is unchanged.
+
+    /** Completes a stub checkout, standing in for the {@code checkout.session.completed} webhook. */
+    @Transactional
+    public void completeStubCheckout(AuthUser user, String sessionId) {
+        Payment payment = requireOwnStubCheckout(user, sessionId);
+        if (payment.getStatus() == PaymentStatus.canceled || payment.getStatus() == PaymentStatus.failed) {
+            // A checkout the customer walked away from must not be completable afterwards.
+            throw ApiException.conflict("This checkout was cancelled — start a new one");
+        }
+        // Idempotent by reuse: handlePaidCheckout returns early on an already-succeeded payment, so
+        // a double submit cannot transition the job twice.
+        handlePaidCheckout(payment.getStripeCheckoutSession());
+        log.info("Stub checkout {} completed for job {}", sessionId, payment.getJobId());
+    }
+
+    /** Abandons a stub checkout. The job stays exactly where it was — no money moved. */
+    @Transactional
+    public void cancelStubCheckout(AuthUser user, String sessionId) {
+        Payment payment = requireOwnStubCheckout(user, sessionId);
+        if (payment.getStatus() == PaymentStatus.succeeded) {
+            throw ApiException.conflict("This payment has already completed");
+        }
+        if (payment.getStatus() == PaymentStatus.canceled) {
+            return; // idempotent
+        }
+        payment.setStatus(PaymentStatus.canceled);
+        payments.save(payment);
+        log.info("Stub checkout {} cancelled for job {}", sessionId, payment.getJobId());
+    }
+
+    /**
+     * Ownership and mode gate. The session id alone is never enough: it must belong to a payment on a
+     * job this caller owns, exactly as the authenticated endpoints require elsewhere.
+     */
+    private Payment requireOwnStubCheckout(AuthUser user, String sessionId) {
+        if (!props.stripe().stubMode()) {
+            // With Stripe live the webhook is the only thing allowed to settle a payment.
+            throw ApiException.notFound("Checkout");
+        }
+        Payment payment = payments.findByStripeCheckoutSession(sessionId)
+                .orElseThrow(() -> ApiException.notFound("Checkout"));
+        requireOwner(jobService.requireJob(payment.getJobId()), user);
+        return payment;
     }
 
     // ---- Refunds, disputes and payout holds (FR-PAY-9, FR-ADMIN-4) ----

@@ -13,6 +13,7 @@ import {
   useDispatchCheckout,
   useJob,
   useProposals,
+  useStubCheckout,
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,7 +124,13 @@ export default function JobDetailPage() {
                   >
                     {dispatch.isPending ? "Preparing checkout…" : "Pay dispatch fee"}
                   </Button>
-                  {checkout && <CheckoutNotice checkout={checkout} />}
+                  {checkout && (
+                    <CheckoutNotice
+                      checkout={checkout}
+                      jobId={jobId}
+                      onSettled={() => setCheckout(null)}
+                    />
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -152,7 +159,13 @@ export default function JobDetailPage() {
                       )}
                     </div>
                   ))}
-                  {checkout && <CheckoutNotice checkout={checkout} />}
+                  {checkout && (
+                    <CheckoutNotice
+                      checkout={checkout}
+                      jobId={jobId}
+                      onSettled={() => setCheckout(null)}
+                    />
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -298,19 +311,52 @@ function ChangeOrdersCard({ jobId }: { jobId: string }) {
 }
 
 /**
- * In production this would redirect to Stripe Checkout. In the frontend-first stub, Stripe isn't live,
- * so we surface the session details instead of navigating to a dead URL.
+ * In production this redirects to Stripe Checkout and Stripe's webhook advances the job. Locally
+ * there is no Stripe and no webhook can reach this machine, so the same two outcomes — paid, or
+ * abandoned — are offered here directly. Both go through the server, which refuses either when
+ * Stripe is live.
  */
-function CheckoutNotice({ checkout }: { checkout: CheckoutView }) {
+function CheckoutNotice({
+  checkout,
+  jobId,
+  onSettled,
+}: {
+  checkout: CheckoutView;
+  jobId: string;
+  onSettled: () => void;
+}) {
+  const { pay, cancel } = useStubCheckout(jobId);
+  const busy = pay.isPending || cancel.isPending;
+  const settle = (m: typeof pay) =>
+    checkout.sessionId && m.mutate(checkout.sessionId, { onSuccess: onSettled });
+
   return (
     <div className="rounded-md border bg-muted p-3 text-sm">
-      <p className="font-medium">Checkout ready — {formatCents(checkout.amountCents)}</p>
-      <p className="mt-1 break-all text-xs text-muted-foreground">
-        Redirect target: {checkout.url}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        (Live mode redirects to Stripe; the payment webhook then advances this job.)
-      </p>
+      <p className="font-medium">Payment due — {formatCents(checkout.amountCents)}</p>
+      {checkout.sessionId ? (
+        <>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Test checkout — no card is charged and no real money moves.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" disabled={busy} onClick={() => settle(pay)}>
+              {pay.isPending ? "Paying…" : "Pay now"}
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => settle(cancel)}>
+              Cancel
+            </Button>
+          </div>
+          {(pay.error || cancel.error) && (
+            <p className="mt-2 text-xs text-destructive">
+              {(pay.error as ApiError | null)?.message ??
+                (cancel.error as ApiError | null)?.message}
+            </p>
+          )}
+        </>
+      ) : (
+        // A waived fee never creates a session: it is already recorded as paid, at zero.
+        <p className="mt-1 text-xs text-muted-foreground">Fee waived — this job goes straight to dispatch.</p>
+      )}
     </div>
   );
 }

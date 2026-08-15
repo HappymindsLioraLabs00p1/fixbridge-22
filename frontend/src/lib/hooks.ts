@@ -97,6 +97,28 @@ export function useDispatchCheckout(jobId: string) {
   });
 }
 
+/**
+ * Settle a stub checkout. Stripe advances a job through its webhook, which cannot reach a local
+ * machine, so without this the job waits for a payment that can never arrive. The endpoints are
+ * refused when Stripe is live.
+ */
+export function useStubCheckout(jobId: string) {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ["job", jobId] });
+  return {
+    pay: useMutation({
+      mutationFn: (sessionId: string) =>
+        api.post<void>(`/api/checkouts/${sessionId}/stub-complete`),
+      onSuccess: refresh,
+    }),
+    cancel: useMutation({
+      mutationFn: (sessionId: string) =>
+        api.post<void>(`/api/checkouts/${sessionId}/stub-cancel`),
+      onSuccess: refresh,
+    }),
+  };
+}
+
 export function useProposals(jobId: string) {
   return useQuery({
     queryKey: ["proposals", jobId],

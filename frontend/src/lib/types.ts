@@ -134,8 +134,9 @@ export interface JobSummary {
 }
 
 export interface CheckoutView {
-  sessionId: string;
-  url: string;
+  /** Null when the fee was waived: nothing is charged, so no checkout session exists. */
+  sessionId: string | null;
+  url: string | null;
   amountCents: number;
   currency: string;
 }

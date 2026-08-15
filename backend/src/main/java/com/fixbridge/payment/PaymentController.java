@@ -29,4 +29,21 @@ public class PaymentController {
                                                      @Valid @RequestBody PaymentDtos.DispatchCheckoutRequest req) {
         return paymentService.createDispatchCheckout(SecurityUtil.currentUser(), jobId, req.serviceType());
     }
+
+    /**
+     * Settle a stub checkout, standing in for the Stripe webhook that cannot reach a local machine.
+     * Both endpoints 404 when Stripe is live, so they exist only for local and staging testing — and
+     * they are authenticated and ownership-checked like every other customer action.
+     */
+    @PostMapping("/checkouts/{sessionId}/stub-complete")
+    @PreAuthorize("hasRole('customer')")
+    public void completeStubCheckout(@PathVariable String sessionId) {
+        paymentService.completeStubCheckout(SecurityUtil.currentUser(), sessionId);
+    }
+
+    @PostMapping("/checkouts/{sessionId}/stub-cancel")
+    @PreAuthorize("hasRole('customer')")
+    public void cancelStubCheckout(@PathVariable String sessionId) {
+        paymentService.cancelStubCheckout(SecurityUtil.currentUser(), sessionId);
+    }
 }
