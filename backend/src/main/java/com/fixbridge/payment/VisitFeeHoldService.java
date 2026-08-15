@@ -67,14 +67,48 @@ public class VisitFeeHoldService {
         return auth;
     }
 
-    /** Take the reserved money. Called when a contractor accepts the job. */
+    /**
+     * Take the reserved money. Called when a contractor accepts the job.
+     *
+     * <p>Forgiving in the same way {@link #release} is, and for a stronger reason: this runs inside a
+     * contractor's acceptance, and the acceptance must survive whatever the money does. A job may
+     * legitimately have no hold — one is placed only when the homeowner is quoted a visit fee, and a
+     * waived dispatch fee reaches dispatch without ever authorising one.
+     *
+     * <p>Nothing here throws, which is the point rather than an oversight. An exception crossing this
+     * transaction boundary marks the <em>caller's</em> transaction rollback-only, so the acceptance is
+     * thrown away at commit time even though the caller catches the exception and carries on. That is
+     * what turned a missing hold into a 500 and silently lost the contractor's bid. Money left
+     * uncaptured is visible and recoverable by an admin; a lost acceptance is neither.
+     *
+     * @return true when money was actually taken
+     */
     @Transactional
-    public void capture(UUID jobId) {
-        Job job = requireHold(jobId);
-        stripe.captureAuthorization(job.getVisitFeeIntentId(), job.getVisitFeeAuthorizedCents());
+    public boolean capture(UUID jobId) {
+        Job job = jobs.findById(jobId).orElse(null);
+        if (job == null) {
+            log.warn("Cannot capture a visit fee for unknown job {}", jobId);
+            return false;
+        }
+        if (job.getVisitFeeIntentId() == null) {
+            log.info("No visit fee is authorised for job {} — nothing to capture", jobId);
+            return false;
+        }
+        if (job.getVisitFeeCapturedAt() != null) {
+            return false;   // idempotent: never take the same visit fee twice
+        }
+        try {
+            stripe.captureAuthorization(job.getVisitFeeIntentId(), job.getVisitFeeAuthorizedCents());
+        } catch (Exception e) {
+            // The hold stands and an admin can capture or release it deliberately.
+            log.warn("Capturing the visit fee for job {} failed — the hold is left in place: {}",
+                    jobId, e.getMessage());
+            return false;
+        }
         job.setVisitFeeCapturedAt(java.time.Instant.now());
         jobs.save(job);
         log.info("Visit fee of {} captured for job {}", job.getVisitFeeAuthorizedCents(), jobId);
+        return true;
     }
 
     /**
@@ -102,14 +136,4 @@ public class VisitFeeHoldService {
         log.info("Visit fee hold released for job {}: {}", jobId, reason);
     }
 
-    private Job requireHold(UUID jobId) {
-        Job job = jobs.findById(jobId).orElseThrow(() -> ApiException.notFound("Job"));
-        if (job.getVisitFeeIntentId() == null) {
-            throw ApiException.conflict("No visit fee is authorised for this job.");
-        }
-        if (job.getVisitFeeCapturedAt() != null) {
-            throw ApiException.conflict("The visit fee has already been captured.");
-        }
-        return job;
-    }
 }

@@ -78,10 +78,16 @@ class VisitFeeHoldServiceTest {
     }
 
     @Test
-    void aCapturedFeeCannotBeCapturedAgain() {
+    void aCapturedFeeIsNeverCapturedAgain() {
+        // Reported rather than thrown. This runs inside a contractor's acceptance, and an exception
+        // crossing the transaction boundary would discard that acceptance at commit — taking the fee
+        // twice and losing the bid are both worse than saying "nothing more to take".
         service.hold(jobId, 9_900L);
-        service.capture(jobId);
-        assertThatThrownBy(() -> service.capture(jobId)).isInstanceOf(ApiException.class);
+        assertThat(service.capture(jobId)).isTrue();
+        var capturedAt = job.getVisitFeeCapturedAt();
+
+        assertThat(service.capture(jobId)).isFalse();
+        assertThat(job.getVisitFeeCapturedAt()).isEqualTo(capturedAt);
     }
 
     @Test
@@ -98,8 +104,32 @@ class VisitFeeHoldServiceTest {
     }
 
     @Test
-    void capturingWithoutAHoldIsRefused() {
-        assertThatThrownBy(() -> service.capture(jobId)).isInstanceOf(ApiException.class);
+    void capturingWithoutAHoldIsHarmless() {
+        // A job can legitimately have no hold: one is placed only when the homeowner is quoted a
+        // visit fee, and a waived dispatch fee reaches dispatch without ever authorising one.
+        // Throwing here marked the caller's transaction rollback-only, so a contractor accepting
+        // such a job got a 500 and their bid was discarded.
+        assertThat(service.capture(jobId)).isFalse();
+
+        assertThat(job.getVisitFeeCapturedAt()).isNull();
+    }
+
+    @Test
+    void anAcceptanceSurvivesAStripeCaptureFailure() {
+        // The hold is left in place for an admin to capture or release deliberately. Money left
+        // uncaptured is visible and recoverable; a lost acceptance is neither.
+        StripeClient failing = mock(StripeClient.class);
+        doThrow(new RuntimeException("card declined"))
+                .when(failing).captureAuthorization(any(), anyLong());
+        when(failing.authorize(anyLong(), any(), any()))
+                .thenReturn(new StripeClient.Authorization("pi_test", "secret", 9_900L));
+        VisitFeeHoldService flaky = new VisitFeeHoldService(failing, jobs);
+        flaky.hold(jobId, 9_900L);
+
+        assertThat(flaky.capture(jobId)).isFalse();
+
+        assertThat(job.getVisitFeeCapturedAt()).isNull();
+        assertThat(job.getVisitFeeIntentId()).isNotBlank();
     }
 
     @Test

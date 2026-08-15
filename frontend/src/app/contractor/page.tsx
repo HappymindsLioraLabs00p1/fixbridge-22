@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RequireRole } from "@/components/require-auth";
-import { uploadFile } from "@/lib/api";
+import { ApiError, uploadFile } from "@/lib/api";
 import {
   useInvitations,
   useMyCompliance,
@@ -218,6 +218,9 @@ function InvitationsList() {
 }
 
 function InvitationRow({ inv }: { inv: ContractorInvitation }) {
+  // "accepted" is set when the contractor's bid lands, so it survives a reload where the mutation's
+  // own success state does not.
+  const alreadyBid = inv.status === "accepted";
   const bid = useSubmitBid(inv.jobId);
   const completion = useSubmitCompletion(inv.jobId);
   const changeOrder = useSubmitChangeOrder(inv.jobId);
@@ -274,6 +277,10 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
     });
   }
 
+  // Every plumbing job looks alike on this card — same trade, same urgency, same expected net — so
+  // without a reference a contractor cannot tell which invitation they are answering.
+  const reference = inv.jobId.slice(0, 8).toUpperCase();
+
   return (
     <div className="rounded-md border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -282,7 +289,9 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
             <span className="font-medium capitalize">{inv.recommendedTrade ?? "Service"}</span>
             <UrgencyBadge urgency={inv.urgency} />
           </div>
-          <p className="text-sm text-muted-foreground">{inv.generalArea}</p>
+          <p className="text-sm text-muted-foreground">
+            {inv.generalArea} · Job {reference}
+          </p>
         </div>
         <div className="text-right text-sm">
           <p className="text-muted-foreground">Expected net</p>
@@ -291,9 +300,16 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
       </div>
 
       <div className="mt-3 flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>
-          {open ? "Cancel" : "Submit net bid"}
-        </Button>
+        {/* An invitation already answered must not offer to answer it again: the server rejects a
+            second bid, so the button could only ever produce an error. The success tick below is
+            mutation state and disappears on reload — this reads from the invitation itself. */}
+        {alreadyBid ? (
+          <span className="self-center text-sm text-muted-foreground">Bid submitted ✓</span>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>
+            {open ? "Cancel" : "Submit net bid"}
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => setCoOpen((o) => !o)}>
           {coOpen ? "Cancel" : "Report extra work"}
         </Button>
@@ -308,6 +324,15 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
           <span className="self-center text-sm text-[var(--success)]">Completion submitted ✓</span>
         )}
       </div>
+
+      {/* Only success was ever shown, so a rejected bid looked like a button that did nothing. */}
+      {(bid.error || changeOrder.error || completion.error) && (
+        <p className="mt-2 text-sm text-destructive">
+          {(bid.error as ApiError | null)?.message ??
+            (changeOrder.error as ApiError | null)?.message ??
+            (completion.error as ApiError | null)?.message}
+        </p>
+      )}
 
       {doneOpen && (
         <form onSubmit={submitCompletion} className="mt-3 space-y-2 border-t pt-3">

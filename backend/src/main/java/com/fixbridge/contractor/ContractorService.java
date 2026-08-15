@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class ContractorService {
@@ -44,6 +45,7 @@ public class ContractorService {
     private final FixBridgeProperties props;
 
     private final com.fixbridge.payment.VisitFeeHoldService visitFeeHolds;
+    private final TradeVocabulary tradeVocabulary;
 
     public ContractorService(ContractorRepository contractors, JobService jobService,
                              JobInvitationRepository invitations, BidRepository bids,
@@ -51,7 +53,9 @@ public class ContractorService {
                              StripeClient stripe, com.fixbridge.notification.NotificationService notifications,
                              com.fixbridge.job.CompletionReportRepository completionReports,
                              ComplianceService compliance, FixBridgeProperties props,
-                             com.fixbridge.payment.VisitFeeHoldService visitFeeHolds) {
+                             com.fixbridge.payment.VisitFeeHoldService visitFeeHolds,
+                             TradeVocabulary tradeVocabulary) {
+        this.tradeVocabulary = tradeVocabulary;
         this.visitFeeHolds = visitFeeHolds;
         this.contractors = contractors;
         this.jobService = jobService;
@@ -117,6 +121,17 @@ public class ContractorService {
                 .orElseThrow(() -> ApiException.forbidden());
         Job job = jobService.requireJob(jobId);
 
+        // One bid per contractor per job. A second was not merely an untidy row: the payout picks a
+        // contractor's most recent bid, so re-submitting quietly changed what the platform paid out,
+        // and the admin's bid list showed the same contractor twice with different numbers.
+        //
+        // The unique constraint below is what actually guarantees this — two simultaneous submits
+        // both pass this check before either writes. It is kept because it answers a double click
+        // with a clear message rather than a database error.
+        if (bids.findByJobIdAndContractorId(jobId, contractor.getId()).isPresent()) {
+            throw ApiException.conflict("You have already submitted a bid for this job");
+        }
+
         Bid bid = new Bid();
         bid.setJobId(jobId);
         bid.setContractorId(contractor.getId());
@@ -131,7 +146,15 @@ public class ContractorService {
         bid.setDurationDays(req.durationDays());
         bid.setWarranty(req.warranty());
         bid.setExclusions(req.exclusions());
-        bids.save(bid);
+        try {
+            // Flushed rather than saved, so a concurrent submit is rejected here by the unique
+            // constraint instead of at commit, where it would surface as an opaque 500 after the
+            // invitation and job had already been moved on.
+            bids.saveAndFlush(bid);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // The other request won. Rolling back is the right outcome — the bid it wrote stands.
+            throw ApiException.conflict("You have already submitted a bid for this job");
+        }
 
         invitation.setStatus(InvitationStatus.accepted);
         invitations.save(invitation);
@@ -203,16 +226,32 @@ public class ContractorService {
     private ContractorDtos.InvitationView toInvitationView(JobInvitation inv) {
         Job job = jobService.requireJob(inv.getJobId());
         Property property = properties.findById(job.getPropertyId()).orElse(null);
-        String area = property == null ? "Service area withheld"
-                : String.join(", ", nullSafe(property.getCity()), nullSafe(property.getState()));
         AiAssessmentEntity a = assessments.findFirstByJobIdOrderByCreatedAtDesc(inv.getJobId()).orElse(null);
         return new ContractorDtos.InvitationView(
                 inv.getJobId(),
                 inv.getStatus(),
-                area,
-                a == null ? null : a.getRecommendedTrade(),
+                area(property),
+                // The catalogue name, not the assessment's "licensed_plumber". A contractor browses
+                // the same trades a customer does, and the raw value reads as a database field.
+                a == null ? null : tradeVocabulary.toCatalogueTrade(a.getRecommendedTrade()),
                 a == null ? null : a.getUrgency(),
                 inv.getExpectedNetCents());
+    }
+
+    /**
+     * Where the work is, at the coarse resolution a contractor sees before bidding — never the full
+     * address.
+     *
+     * <p>Joining blank city and state produced a bare ", ", which reads as a rendering fault rather
+     * than as missing information.
+     */
+    private static String area(Property property) {
+        if (property == null) return "Service area withheld";
+        String city = nullSafe(property.getCity());
+        String state = nullSafe(property.getState());
+        String joined = Stream.of(city, state).filter(s -> !s.isBlank())
+                .collect(java.util.stream.Collectors.joining(", "));
+        return joined.isBlank() ? "Service area withheld" : joined;
     }
 
     private static String nullSafe(String s) {
