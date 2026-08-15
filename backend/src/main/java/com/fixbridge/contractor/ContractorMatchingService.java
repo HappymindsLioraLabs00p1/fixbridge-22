@@ -39,22 +39,31 @@ public class ContractorMatchingService {
     private final ContractorReviewRepository reviews;
     private final TransferRepository transfers;
     private final ComplianceService compliance;
+    private final TradeVocabulary tradeVocabulary;
 
     public ContractorMatchingService(ContractorRepository contractors,
                                      ContractorSkillRepository skills,
                                      ContractorReviewRepository reviews,
                                      TransferRepository transfers,
-                                     ComplianceService compliance) {
+                                     ComplianceService compliance,
+                                     TradeVocabulary tradeVocabulary) {
         this.contractors = contractors;
         this.skills = skills;
         this.reviews = reviews;
         this.transfers = transfers;
         this.compliance = compliance;
+        this.tradeVocabulary = tradeVocabulary;
     }
 
+    /**
+     * @param requiredTrade named in either vocabulary — an assessment's {@code licensed_plumber} or
+     *                      the catalogue's {@code plumbing}. It is translated here, once, so every
+     *                      caller searches the same names contractors actually declare.
+     */
     @Transactional(readOnly = true)
-    public MatchDtos.MatchResult match(String requiredTrade, Double customerLat, Double customerLng,
+    public MatchDtos.MatchResult match(String trade, Double customerLat, Double customerLng,
                                        int limit) {
+        String requiredTrade = tradeVocabulary.toCatalogueTrade(trade);
         Map<UUID, Long> completed = transfers.findAll().stream()
                 .filter(t -> t.getStatus() == TransferStatus.paid)
                 .collect(Collectors.groupingBy(Transfer::getContractorId, Collectors.counting()));

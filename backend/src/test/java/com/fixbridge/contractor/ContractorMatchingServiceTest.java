@@ -27,7 +27,8 @@ class ContractorMatchingServiceTest {
     private final ComplianceService compliance = mock(ComplianceService.class);
 
     private final ContractorMatchingService matching =
-            new ContractorMatchingService(contractors, skills, reviews, transfers, compliance);
+            new ContractorMatchingService(contractors, skills, reviews, transfers, compliance,
+                    new TradeVocabulary());
 
     ContractorMatchingServiceTest() {
         when(reviews.findAll()).thenReturn(List.of());
@@ -67,6 +68,23 @@ class ContractorMatchingServiceTest {
         when(contractors.findAll()).thenReturn(List.of(c));
 
         assertThat(matchedNames("plumbing")).containsExactly("Kingsway Plumbing");
+    }
+
+    @Test
+    void aPlumberIsMatchedForAnAssessmentAskingForALicensedPlumber() {
+        // The two vocabularies meet here. Untranslated, "licensed_plumber" matches no declared skill,
+        // the trade filter is judged unusable, and the fallback offers every compliant contractor —
+        // so the roofer below would be returned for a plumbing job, and nothing would say so.
+        Contractor plumber = eligible("Kingsway Plumbing", "plumbing");
+        Contractor roofer = eligible("Atlas Roofing", "roofing");
+        when(contractors.findAll()).thenReturn(List.of(plumber, roofer));
+
+        var result = matching.match("licensed_plumber", 40.7, -73.9, 10);
+
+        assertThat(result.matches()).extracting(m -> m.businessName())
+                .containsExactly("Kingsway Plumbing");
+        assertThat(result.tradeFilterApplied()).isTrue();
+        assertThat(result.requiredTrade()).isEqualTo("plumbing");
     }
 
     @Test

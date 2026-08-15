@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Comparator;
 import java.util.UUID;
@@ -42,6 +44,7 @@ public class PaymentService {
     private final DisputeRepository disputeRepository;
     private final com.fixbridge.audit.AuditService audit;
     private final com.fixbridge.config.FixBridgeProperties props;
+    private final com.fixbridge.job.AutoDispatchService autoDispatch;
 
     public PaymentService(PaymentRepository payments, DispatchFeeRepository dispatchFees,
                           ProposalRepository proposals, BidRepository bids, ContractorRepository contractors,
@@ -49,8 +52,10 @@ public class PaymentService {
                           com.fixbridge.notification.NotificationService notifications,
                           RefundRepository refunds, DisputeRepository disputeRepository,
                           com.fixbridge.audit.AuditService audit,
-                          com.fixbridge.config.FixBridgeProperties props) {
+                          com.fixbridge.config.FixBridgeProperties props,
+                          com.fixbridge.job.AutoDispatchService autoDispatch) {
         this.props = props;
+        this.autoDispatch = autoDispatch;
         this.payments = payments;
         this.dispatchFees = dispatchFees;
         this.proposals = proposals;
@@ -93,6 +98,7 @@ public class PaymentService {
             jobService.transition(job, JobStatus.paid_for_dispatch, null);
             jobService.transition(job, JobStatus.awaiting_contractor, null);
             log.info("Dispatch fee waived for job {} — entering dispatch without a charge", jobId);
+            dispatchQuietly(job.getId());
             return new PaymentDtos.CheckoutView(null, null, 0L, "USD");
         }
 
@@ -142,12 +148,49 @@ public class PaymentService {
             case dispatch_fee -> {
                 jobService.transition(job, JobStatus.paid_for_dispatch, null);
                 jobService.transition(job, JobStatus.awaiting_contractor, null);
+                dispatchQuietly(job.getId());
             }
             case managed_repair, deposit, final_payment, progress -> {
                 jobService.transition(job, JobStatus.approved, null);
                 jobService.transition(job, JobStatus.scheduled, null);
             }
             default -> log.info("No job transition for payment type {}", payment.getType());
+        }
+    }
+
+    /**
+     * Ask for contractors now that the job is paid for.
+     *
+     * <p>Deferred until the payment transaction commits, for two reasons that pull the same way.
+     * Dispatch runs in its own transaction and would otherwise not see the transition to
+     * awaiting_contractor at all — it would read the job in its previous state and quietly decline to
+     * do anything, which is exactly what happened before this was deferred. And inviting contractors
+     * from inside the payment's transaction would mean invitations could be created for a payment
+     * that then rolled back: contractors called out for a job nobody paid for.
+     *
+     * <p>Never fatal either way. The money has moved; failing the payment because dispatch found
+     * nobody would be the wrong way round. The job stays at awaiting_contractor, which an admin can
+     * dispatch from by hand, and the sweep still releases the visit-fee hold if nobody takes it.
+     */
+    private void dispatchQuietly(UUID jobId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            runDispatch(jobId);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                runDispatch(jobId);
+            }
+        });
+    }
+
+    private void runDispatch(UUID jobId) {
+        try {
+            autoDispatch.dispatch(jobId);
+        } catch (Exception e) {
+            log.warn("Auto-dispatch failed for job {} — it stays awaiting a contractor: {}",
+                    jobId, e.getMessage());
         }
     }
 

@@ -40,6 +40,8 @@ class StubCheckoutTest {
     private final DispatchFeeRepository dispatchFees = mock(DispatchFeeRepository.class);
     private final StripeClient stripe = mock(StripeClient.class);
     private final JobService jobService = mock(JobService.class);
+    private final com.fixbridge.job.AutoDispatchService autoDispatch =
+            mock(com.fixbridge.job.AutoDispatchService.class);
 
     private final UUID customerId = UUID.randomUUID();
     private final AuthUser customer = new AuthUser(customerId, "c@example.test", List.of(UserRole.customer));
@@ -61,7 +63,8 @@ class StubCheckoutTest {
                 mock(com.fixbridge.job.BidRepository.class), mock(com.fixbridge.contractor.ContractorRepository.class),
                 mock(TransferRepository.class), stripe, jobService,
                 mock(com.fixbridge.notification.NotificationService.class), mock(RefundRepository.class),
-                mock(DisputeRepository.class), mock(com.fixbridge.audit.AuditService.class), props);
+                mock(DisputeRepository.class), mock(com.fixbridge.audit.AuditService.class), props,
+                autoDispatch);
     }
 
     private Job job(JobStatus status) {
