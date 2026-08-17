@@ -46,6 +46,7 @@ public class PaymentService {
     private final com.fixbridge.config.FixBridgeProperties props;
     private final com.fixbridge.job.AutoDispatchService autoDispatch;
     private final com.fixbridge.job.JobRepository jobs;
+    private final com.fixbridge.job.ChangeOrderRepository changeOrders;
 
     public PaymentService(PaymentRepository payments, DispatchFeeRepository dispatchFees,
                           ProposalRepository proposals, BidRepository bids, ContractorRepository contractors,
@@ -55,8 +56,10 @@ public class PaymentService {
                           com.fixbridge.audit.AuditService audit,
                           com.fixbridge.config.FixBridgeProperties props,
                           com.fixbridge.job.AutoDispatchService autoDispatch,
-                          com.fixbridge.job.JobRepository jobs) {
+                          com.fixbridge.job.JobRepository jobs,
+                          com.fixbridge.job.ChangeOrderRepository changeOrders) {
         this.jobs = jobs;
+        this.changeOrders = changeOrders;
         this.props = props;
         this.autoDispatch = autoDispatch;
         this.payments = payments;
@@ -397,25 +400,40 @@ public class PaymentService {
                 .max(Comparator.comparing(Bid::getCreatedAt))
                 .orElseThrow(() -> ApiException.conflict("No contractor bid found for payout"));
 
+        // The bid is what the contractor quoted before opening anything up. Work discovered and
+        // approved afterwards is work they actually did, and paying the bid alone left them short by
+        // exactly that amount — the customer agreed to the extra, the contractor performed it, and
+        // the money stopped at the platform.
+        //
+        // Only approved change orders count. A declined or expired one is work that was never
+        // authorised, and completion sign-off already refuses to proceed while any is still
+        // outstanding, so nothing unresolved can reach this point.
+        long approvedExtraNet = changeOrders.findByJobIdOrderByCreatedAtAsc(jobId).stream()
+                .filter(co -> co.getStatus() == com.fixbridge.common.enums.ProposalStatus.approved)
+                .mapToLong(com.fixbridge.job.ChangeOrder::getAddedNetCents)
+                .sum();
+        long payoutCents = bid.getNetTotalCents() + approvedExtraNet;
+
         jobService.transition(job, JobStatus.payout_pending, admin.id());
         String transferId = stripe.createTransfer(
-                contractor.getStripeAccountId(), bid.getNetTotalCents(), "USD", jobId.toString());
+                contractor.getStripeAccountId(), payoutCents, "USD", jobId.toString());
 
         Transfer transfer = new Transfer();
         transfer.setJobId(jobId);
         transfer.setContractorId(contractor.getId());
-        transfer.setAmountCents(bid.getNetTotalCents());
+        transfer.setAmountCents(payoutCents);
         transfer.setStatus(com.fixbridge.common.enums.TransferStatus.paid);
         transfer.setStripeTransferId(transferId);
         transfer.setReleasedBy(admin.id());
         transfers.save(transfer);
 
         jobService.transition(job, JobStatus.paid_out, admin.id());
-        notifications.payoutReleased(contractor.getId(), jobId, bid.getNetTotalCents());
+        notifications.payoutReleased(contractor.getId(), jobId, payoutCents);
         audit.record(admin.id(), "payout.release", "transfer", transfer.getId(),
                 java.util.Map.of("jobId", jobId.toString(), "contractorId", contractor.getId().toString(),
-                        "amountCents", bid.getNetTotalCents(), "stripeTransferId", transferId));
-        return new PaymentDtos.PayoutView(transfer.getId(), bid.getNetTotalCents(), "paid");
+                        "amountCents", payoutCents, "bidNetCents", bid.getNetTotalCents(),
+                        "approvedExtraNetCents", approvedExtraNet, "stripeTransferId", transferId));
+        return new PaymentDtos.PayoutView(transfer.getId(), payoutCents, "paid");
     }
 
     private Payment newPayment(UUID jobId, UUID customerId, PaymentType type, long amount) {

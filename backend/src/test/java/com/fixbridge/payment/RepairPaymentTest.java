@@ -72,7 +72,8 @@ class RepairPaymentTest {
                 mock(com.fixbridge.job.BidRepository.class), contractors, transfers, stripe, jobService,
                 mock(com.fixbridge.notification.NotificationService.class), mock(RefundRepository.class),
                 mock(DisputeRepository.class), mock(com.fixbridge.audit.AuditService.class), props,
-                autoDispatch, mock(com.fixbridge.job.JobRepository.class));
+                autoDispatch, mock(com.fixbridge.job.JobRepository.class),
+                mock(com.fixbridge.job.ChangeOrderRepository.class));
 
         job = new Job();
         job.setId(UUID.randomUUID());

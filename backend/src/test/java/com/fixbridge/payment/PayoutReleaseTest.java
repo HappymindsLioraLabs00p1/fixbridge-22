@@ -2,6 +2,7 @@ package com.fixbridge.payment;
 
 import com.fixbridge.auth.AuthUser;
 import com.fixbridge.common.enums.JobStatus;
+import com.fixbridge.common.enums.ProposalStatus;
 import com.fixbridge.common.enums.TransferStatus;
 import com.fixbridge.common.enums.UserRole;
 import com.fixbridge.common.error.ApiException;
@@ -9,6 +10,8 @@ import com.fixbridge.config.FixBridgeProperties;
 import com.fixbridge.contractor.Contractor;
 import com.fixbridge.contractor.ContractorRepository;
 import com.fixbridge.job.Bid;
+import com.fixbridge.job.ChangeOrder;
+import com.fixbridge.job.ChangeOrderRepository;
 import com.fixbridge.job.BidRepository;
 import com.fixbridge.job.Job;
 import com.fixbridge.job.JobRepository;
@@ -50,6 +53,10 @@ class PayoutReleaseTest {
     private final TransferRepository transfers = mock(TransferRepository.class);
     private final StripeClient stripe = mock(StripeClient.class);
     private final NotificationService notifications = mock(NotificationService.class);
+    private final ChangeOrderRepository changeOrders = mock(ChangeOrderRepository.class);
+
+    /** Stands in for the change_orders table for this job. */
+    private final List<ChangeOrder> orders = new java.util.ArrayList<>();
 
     private final UUID adminId = UUID.randomUUID();
     private final AuthUser admin = new AuthUser(adminId, "admin@example.test", List.of(UserRole.admin));
@@ -72,7 +79,7 @@ class PayoutReleaseTest {
                 mock(com.fixbridge.proposal.ProposalRepository.class), bids, contractors, transfers,
                 stripe, jobService, notifications, mock(RefundRepository.class),
                 mock(DisputeRepository.class), mock(com.fixbridge.audit.AuditService.class), props,
-                mock(com.fixbridge.job.AutoDispatchService.class), jobs);
+                mock(com.fixbridge.job.AutoDispatchService.class), jobs, changeOrders);
 
         contractor = new Contractor();
         contractor.setId(UUID.randomUUID());
@@ -106,6 +113,17 @@ class PayoutReleaseTest {
             return t;
         });
         when(transfers.findByJobId(job.getId())).thenAnswer(i -> List.copyOf(stored));
+        when(changeOrders.findByJobIdOrderByCreatedAtAsc(job.getId()))
+                .thenAnswer(i -> List.copyOf(orders));
+    }
+
+    private void changeOrder(ProposalStatus status, long addedNetCents) {
+        ChangeOrder co = new ChangeOrder();
+        co.setId(UUID.randomUUID());
+        co.setJobId(job.getId());
+        co.setAddedNetCents(addedNetCents);
+        co.setStatus(status);
+        orders.add(co);
     }
 
     // ---- Test 1, 9, 11: the eligible release ----
@@ -143,6 +161,68 @@ class PayoutReleaseTest {
             assertThat(t.getStatus()).isEqualTo(TransferStatus.paid);
             assertThat(t.getStripeTransferId()).isEqualTo("tr_test_1");
         });
+    }
+
+    // ---- Approved extra work is part of what the contractor is owed ----
+
+    @Test
+    void approvedExtraWorkIsPaidOnTopOfTheBid() {
+        // The bid is what was quoted before anything was opened up. Work discovered afterwards and
+        // approved by the customer is work the contractor actually did — paying the bid alone left
+        // them short by exactly that amount while the platform kept the money.
+        changeOrder(ProposalStatus.approved, 8_000L);
+
+        var view = service.releasePayout(admin, job.getId());
+
+        assertThat(view.amountCents()).isEqualTo(29_000L);   // 21,000 bid + 8,000 approved extra
+        verify(stripe).createTransfer(any(), eq(29_000L), any(), any());
+    }
+
+    @Test
+    void severalApprovedChangeOrdersAllCount() {
+        changeOrder(ProposalStatus.approved, 8_000L);
+        changeOrder(ProposalStatus.approved, 3_500L);
+
+        assertThat(service.releasePayout(admin, job.getId()).amountCents()).isEqualTo(32_500L);
+    }
+
+    @Test
+    void declinedExtraWorkIsNotPaid() {
+        // The customer said no, so it was never authorised. Paying for it would charge the platform
+        // for work the customer refused.
+        changeOrder(ProposalStatus.declined, 8_000L);
+
+        assertThat(service.releasePayout(admin, job.getId()).amountCents()).isEqualTo(21_000L);
+    }
+
+    @Test
+    void unapprovedExtraWorkIsNotPaid() {
+        // draft is not yet priced and sent is not yet agreed. Completion sign-off refuses to proceed
+        // while either is outstanding, so neither should ever reach a payout — asserted anyway,
+        // because the cost of being wrong here is paying for work nobody authorised.
+        changeOrder(ProposalStatus.draft, 8_000L);
+        changeOrder(ProposalStatus.sent, 4_000L);
+
+        assertThat(service.releasePayout(admin, job.getId()).amountCents()).isEqualTo(21_000L);
+    }
+
+    @Test
+    void aJobWithNoExtraWorkStillPaysTheBid() {
+        // The ordinary case must not move.
+        assertThat(service.releasePayout(admin, job.getId()).amountCents()).isEqualTo(21_000L);
+    }
+
+    @Test
+    void theContractorIsToldTheAmountTheyAreActuallyPaid() {
+        // The notification and the audit record used the bid alone. A contractor told one figure and
+        // paid another is how a dispute starts, and the audit trail would have backed the wrong one.
+        changeOrder(ProposalStatus.approved, 8_000L);
+
+        service.releasePayout(admin, job.getId());
+
+        verify(notifications).payoutReleased(contractor.getId(), job.getId(), 29_000L);
+        assertThat(stored).singleElement()
+                .satisfies(t -> assertThat(t.getAmountCents()).isEqualTo(29_000L));
     }
 
     // ---- Tests 5, 6, 10: never twice ----

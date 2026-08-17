@@ -60,7 +60,8 @@ class PayoutEligibilityTest {
                 mock(com.fixbridge.job.BidRepository.class), contractors, transfers, stripe, jobService,
                 mock(com.fixbridge.notification.NotificationService.class), mock(RefundRepository.class),
                 mock(DisputeRepository.class), mock(com.fixbridge.audit.AuditService.class), props,
-                mock(com.fixbridge.job.AutoDispatchService.class), jobs);
+                mock(com.fixbridge.job.AutoDispatchService.class), jobs,
+                mock(com.fixbridge.job.ChangeOrderRepository.class));
 
         Contractor c = new Contractor();
         c.setId(UUID.randomUUID());
