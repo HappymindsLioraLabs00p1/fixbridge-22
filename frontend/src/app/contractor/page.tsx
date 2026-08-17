@@ -11,6 +11,7 @@ import {
   useSubmitBid,
   useSubmitChangeOrder,
   useSubmitCompletion,
+  useStartWork,
 } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,6 +222,10 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
   // "accepted" is set when the contractor's bid lands, so it survives a reload where the mutation's
   // own success state does not.
   const alreadyBid = inv.status === "accepted";
+  // A job is startable once it is booked, and only then. Once started, the work actions apply.
+  const canStart = inv.jobStatus === "scheduled";
+  const inProgress = inv.jobStatus === "work_started" || inv.jobStatus === "change_order_pending";
+  const start = useStartWork(inv.jobId);
   const bid = useSubmitBid(inv.jobId);
   const completion = useSubmitCompletion(inv.jobId);
   const changeOrder = useSubmitChangeOrder(inv.jobId);
@@ -310,12 +315,24 @@ function InvitationRow({ inv }: { inv: ContractorInvitation }) {
             {open ? "Cancel" : "Submit net bid"}
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => setCoOpen((o) => !o)}>
-          {coOpen ? "Cancel" : "Report extra work"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setDoneOpen((o) => !o)}>
-          {doneOpen ? "Cancel" : "Mark work complete"}
-        </Button>
+        {/* Gated on where the JOB has got to, not the invitation. Every action used to be offered
+            on every invitation, so a job nobody had started still showed "Mark work complete". The
+            server enforces the same rules — this only stops offering what it would refuse. */}
+        {canStart && (
+          <Button size="sm" disabled={start.isPending} onClick={() => start.mutate()}>
+            {start.isPending ? "Starting…" : "Start work"}
+          </Button>
+        )}
+        {inProgress && (
+          <>
+            <Button size="sm" variant="outline" onClick={() => setCoOpen((o) => !o)}>
+              {coOpen ? "Cancel" : "Report extra work"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDoneOpen((o) => !o)}>
+              {doneOpen ? "Cancel" : "Mark work complete"}
+            </Button>
+          </>
+        )}
         {bid.isSuccess && <span className="self-center text-sm text-[var(--success)]">Bid submitted ✓</span>}
         {changeOrder.isSuccess && (
           <span className="self-center text-sm text-[var(--success)]">Change order submitted ✓</span>

@@ -157,6 +157,8 @@ export interface CustomerProposal {
 export interface ContractorInvitation {
   jobId: string;
   status: string;
+  /** Where the job itself has got to — a different question from the invitation's own status. */
+  jobStatus: string;
   generalArea: string;
   recommendedTrade: string | null;
   urgency: AiUrgency | null;

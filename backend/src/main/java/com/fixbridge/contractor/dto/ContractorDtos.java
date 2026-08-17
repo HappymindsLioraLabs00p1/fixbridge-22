@@ -24,6 +24,12 @@ public final class ContractorDtos {
     public record InvitationView(
             UUID jobId,
             InvitationStatus status,
+            /**
+             * Where the job itself has got to, which is a different question from where the
+             * invitation has. Without it the card cannot tell a job waiting to be started from one
+             * already finished, so it offered every action on every invitation.
+             */
+            com.fixbridge.common.enums.JobStatus jobStatus,
             String generalArea,
             String recommendedTrade,
             AiUrgency urgency,

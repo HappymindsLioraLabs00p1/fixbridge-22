@@ -68,7 +68,7 @@ class SubmitBidTest {
                 mock(com.fixbridge.ai.AiAssessmentRepository.class),
                 mock(StripeClient.class), mock(com.fixbridge.notification.NotificationService.class),
                 mock(com.fixbridge.job.CompletionReportRepository.class),
-                mock(ComplianceService.class), props, visitFeeHolds, new TradeVocabulary());
+                mock(ComplianceService.class), props, visitFeeHolds, new TradeVocabulary(), mock(com.fixbridge.job.JobRepository.class));
 
         contractor = new Contractor();
         contractor.setId(UUID.randomUUID());

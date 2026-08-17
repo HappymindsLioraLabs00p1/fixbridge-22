@@ -50,6 +50,23 @@ public class ChangeOrderService {
         if (!contractor.getId().equals(job.getAssignedContractorId())) {
             throw ApiException.forbidden();
         }
+        // Extra work is work discovered while doing the job, so there has to be a job under way.
+        // Without this, additional cost could be attached to one that was never started or is
+        // already finished — after the customer had approved a price and stopped watching.
+        if (job.getStatus() != JobStatus.work_started) {
+            throw ApiException.conflict(
+                    "Extra work can only be reported while the job is in progress");
+        }
+        // One at a time. A second unresolved change order gives the customer two prices to approve
+        // for the same visit, and the completion gate would then be satisfied by approving either.
+        boolean unresolved = changeOrders.findByJobIdOrderByCreatedAtAsc(jobId).stream()
+                .anyMatch(co -> co.getStatus() == ProposalStatus.draft
+                        || co.getStatus() == ProposalStatus.sent);
+        if (unresolved) {
+            throw ApiException.conflict(
+                    "There is already extra work awaiting approval on this job");
+        }
+
         ChangeOrder co = new ChangeOrder();
         co.setJobId(jobId);
         co.setDescription(req.description());

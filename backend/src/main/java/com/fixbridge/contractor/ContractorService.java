@@ -46,6 +46,7 @@ public class ContractorService {
 
     private final com.fixbridge.payment.VisitFeeHoldService visitFeeHolds;
     private final TradeVocabulary tradeVocabulary;
+    private final com.fixbridge.job.JobRepository jobs;
 
     public ContractorService(ContractorRepository contractors, JobService jobService,
                              JobInvitationRepository invitations, BidRepository bids,
@@ -54,7 +55,9 @@ public class ContractorService {
                              com.fixbridge.job.CompletionReportRepository completionReports,
                              ComplianceService compliance, FixBridgeProperties props,
                              com.fixbridge.payment.VisitFeeHoldService visitFeeHolds,
-                             TradeVocabulary tradeVocabulary) {
+                             TradeVocabulary tradeVocabulary,
+                             com.fixbridge.job.JobRepository jobs) {
+        this.jobs = jobs;
         this.tradeVocabulary = tradeVocabulary;
         this.visitFeeHolds = visitFeeHolds;
         this.contractors = contractors;
@@ -175,13 +178,63 @@ public class ContractorService {
         }
     }
 
+    /**
+     * The contractor is on site and starting.
+     *
+     * <p>A scheduled job had no way forward. Nothing in the application transitioned a job to
+     * work_started except approving a change order, so the only route from "booked" to "in progress"
+     * ran through reporting extra work — and the contractor's card offered "Mark work complete" on a
+     * job nobody had begun.
+     *
+     * <p>Reads the job under a row lock. Two taps on a phone with a poor connection would otherwise
+     * both see scheduled, both write work_started, and put two starts in the job's timeline.
+     */
+    @Transactional
+    public void startWork(AuthUser user, UUID jobId) {
+        Contractor contractor = requireContractor(user);
+        Job job = jobs.findByIdForUpdate(jobId).orElseThrow(() -> ApiException.notFound("Job"));
+
+        // Being invited is not enough — only whoever was actually assigned may start the work.
+        if (!contractor.getId().equals(job.getAssignedContractorId())) {
+            throw ApiException.forbidden();
+        }
+        if (job.getStatus() == JobStatus.work_started) {
+            return;   // idempotent: already started, by this same contractor
+        }
+        if (job.getStatus() != JobStatus.scheduled) {
+            throw ApiException.conflict(
+                    "This job cannot be started while it is " + job.getStatus().name().replace('_', ' '));
+        }
+        jobService.transition(job, JobStatus.work_started, user.id());
+        log.info("Contractor {} started work on job {}", contractor.getId(), jobId);
+    }
+
     /** Contractor submits completion proof. Customer/admin then confirms before payout. */
     @Transactional
     public void submitCompletion(AuthUser user, UUID jobId, ContractorDtos.CompletionRequest req) {
         Contractor contractor = requireContractor(user);
-        Job job = jobService.requireJob(jobId);
+        Job job = jobs.findByIdForUpdate(jobId).orElseThrow(() -> ApiException.notFound("Job"));
         if (!contractor.getId().equals(job.getAssignedContractorId())) {
             throw ApiException.forbidden();
+        }
+
+        // Already submitted. Returning quietly rather than failing: the contractor's intent was to
+        // report the work finished and it is reported, so a retry from a phone that lost signal
+        // mid-request must not read as an error — nor file a second report, which would leave the
+        // customer two things to sign off and the payout gate satisfied by either.
+        if (job.getStatus() == JobStatus.work_completed
+                || job.getStatus() == JobStatus.customer_review_pending) {
+            if (completionReports.findFirstByJobIdOrderByCreatedAtDesc(jobId).isPresent()) {
+                return;
+            }
+        }
+        // Work has to have started before it can be finished. Without this a contractor could close
+        // a job they never attended, or close one while the extra work they reported is still
+        // waiting on the customer — which would bill for work nobody agreed to.
+        if (job.getStatus() != JobStatus.work_started) {
+            throw ApiException.conflict(
+                    "Work cannot be completed while the job is "
+                            + job.getStatus().name().replace('_', ' '));
         }
 
         // Persist the proof itself (FR-JOB-7) — not just the status change.
@@ -230,6 +283,7 @@ public class ContractorService {
         return new ContractorDtos.InvitationView(
                 inv.getJobId(),
                 inv.getStatus(),
+                job.getStatus(),
                 area(property),
                 // The catalogue name, not the assessment's "licensed_plumber". A contractor browses
                 // the same trades a customer does, and the raw value reads as a database field.

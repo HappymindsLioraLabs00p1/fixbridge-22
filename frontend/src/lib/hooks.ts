@@ -135,6 +135,15 @@ export function useDeclineProposal(jobId: string) {
   });
 }
 
+/** Contractor is on site and starting: scheduled → work_started. */
+export function useStartWork(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<void>(`/api/contractor/jobs/${jobId}/start`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invitations"] }),
+  });
+}
+
 export function useProposals(jobId: string) {
   return useQuery({
     queryKey: ["proposals", jobId],

@@ -47,6 +47,13 @@ public class ContractorController {
         contractorService.submitBid(SecurityUtil.currentUser(), jobId, req);
     }
 
+    /** The contractor is on site and starting: scheduled → work_started. */
+    @PostMapping("/jobs/{jobId}/start")
+    @PreAuthorize("hasRole('contractor')")
+    public void startWork(@PathVariable UUID jobId) {
+        contractorService.startWork(SecurityUtil.currentUser(), jobId);
+    }
+
     @PostMapping("/jobs/{jobId}/completion")
     public void submitCompletion(@PathVariable UUID jobId, @Valid @RequestBody ContractorDtos.CompletionRequest req) {
         contractorService.submitCompletion(SecurityUtil.currentUser(), jobId, req);

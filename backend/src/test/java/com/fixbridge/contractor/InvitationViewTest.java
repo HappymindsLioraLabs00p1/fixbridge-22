@@ -58,7 +58,8 @@ class InvitationViewTest {
                 mock(com.fixbridge.notification.NotificationService.class),
                 mock(com.fixbridge.job.CompletionReportRepository.class),
                 mock(ComplianceService.class), props,
-                mock(com.fixbridge.payment.VisitFeeHoldService.class), new TradeVocabulary());
+                mock(com.fixbridge.payment.VisitFeeHoldService.class), new TradeVocabulary(),
+                mock(com.fixbridge.job.JobRepository.class));
 
         contractor = new Contractor();
         contractor.setId(UUID.randomUUID());

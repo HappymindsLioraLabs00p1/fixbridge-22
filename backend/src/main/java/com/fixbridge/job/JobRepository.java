@@ -12,5 +12,17 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
 
     /** Jobs in any of several states — the admin queue spans more than one. */
     List<Job> findByStatusIn(java.util.Collection<JobStatus> statuses);
+
+    /**
+     * Read a job for a status change, holding the row until the transaction commits.
+     *
+     * <p>Two requests that both read {@code scheduled} would both write {@code work_started} and both
+     * record a history entry, so the job's timeline would show it starting twice. Serialising the
+     * read means the second caller sees the first caller's result and can treat its own request as
+     * already done.
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select j from Job j where j.id = :id")
+    java.util.Optional<Job> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") UUID id);
     List<Job> findByAssignedContractorId(UUID contractorId);
 }
