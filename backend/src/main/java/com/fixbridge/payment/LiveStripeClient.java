@@ -66,12 +66,19 @@ public class LiveStripeClient implements StripeClient {
     @Override
     public String createTransfer(String connectedAccountId, long amountCents, String currency, String referenceId) {
         try {
+            // The reference is the job id, and a job is paid out once — so it is also the
+            // idempotency key. Our own guards stop a duplicate release we can see; this stops the
+            // one we cannot, where the transfer succeeds at Stripe and the response is lost on the
+            // way back. Without it a retry after that sends the contractor a second real payment.
+            com.stripe.net.RequestOptions options = com.stripe.net.RequestOptions.builder()
+                    .setIdempotencyKey("payout-" + referenceId)
+                    .build();
             Transfer transfer = Transfer.create(TransferCreateParams.builder()
                     .setAmount(amountCents)
                     .setCurrency(currency.toLowerCase())
                     .setDestination(connectedAccountId)
                     .putMetadata("reference", referenceId)
-                    .build());
+                    .build(), options);
             return transfer.getId();
         } catch (StripeException e) {
             throw paymentError("create transfer", e);

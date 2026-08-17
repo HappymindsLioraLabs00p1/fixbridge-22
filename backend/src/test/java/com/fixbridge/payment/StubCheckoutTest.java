@@ -64,7 +64,7 @@ class StubCheckoutTest {
                 mock(TransferRepository.class), stripe, jobService,
                 mock(com.fixbridge.notification.NotificationService.class), mock(RefundRepository.class),
                 mock(DisputeRepository.class), mock(com.fixbridge.audit.AuditService.class), props,
-                autoDispatch);
+                autoDispatch, mock(com.fixbridge.job.JobRepository.class));
     }
 
     private Job job(JobStatus status) {

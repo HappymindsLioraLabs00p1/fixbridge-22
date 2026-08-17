@@ -45,6 +45,7 @@ public class PaymentService {
     private final com.fixbridge.audit.AuditService audit;
     private final com.fixbridge.config.FixBridgeProperties props;
     private final com.fixbridge.job.AutoDispatchService autoDispatch;
+    private final com.fixbridge.job.JobRepository jobs;
 
     public PaymentService(PaymentRepository payments, DispatchFeeRepository dispatchFees,
                           ProposalRepository proposals, BidRepository bids, ContractorRepository contractors,
@@ -53,7 +54,9 @@ public class PaymentService {
                           RefundRepository refunds, DisputeRepository disputeRepository,
                           com.fixbridge.audit.AuditService audit,
                           com.fixbridge.config.FixBridgeProperties props,
-                          com.fixbridge.job.AutoDispatchService autoDispatch) {
+                          com.fixbridge.job.AutoDispatchService autoDispatch,
+                          com.fixbridge.job.JobRepository jobs) {
+        this.jobs = jobs;
         this.props = props;
         this.autoDispatch = autoDispatch;
         this.payments = payments;
@@ -353,7 +356,21 @@ public class PaymentService {
      */
     @Transactional
     public PaymentDtos.PayoutView releasePayout(AuthUser admin, UUID jobId) {
-        Job job = jobService.requireJob(jobId);
+        // Locked for the whole release. Two admins clicking at the same moment would otherwise both
+        // pass every check below before either wrote, and each would send money.
+        Job job = jobs.findByIdForUpdate(jobId).orElseThrow(() -> ApiException.notFound("Job"));
+
+        // Already paid. Returning the existing transfer rather than failing: the caller wanted this
+        // contractor paid for this job and they are, so a retried request is satisfied — and a
+        // second transfer is not a stray row, it is a second real payment nobody can recall.
+        var existing = transfers.findByJobId(jobId).stream()
+                .filter(t -> t.getStatus() == com.fixbridge.common.enums.TransferStatus.paid)
+                .findFirst();
+        if (existing.isPresent()) {
+            Transfer t = existing.get();
+            return new PaymentDtos.PayoutView(t.getId(), t.getAmountCents(), t.getStatus().name());
+        }
+
         if (job.getStatus() != JobStatus.work_completed && job.getStatus() != JobStatus.admin_review_pending
                 && job.getStatus() != JobStatus.customer_review_pending) {
             throw ApiException.conflict("Payout can only be released after work is completed and approved");
