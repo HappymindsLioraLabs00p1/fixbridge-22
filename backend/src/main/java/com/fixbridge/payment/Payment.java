@@ -50,6 +50,16 @@ public class Payment {
     @Column(nullable = false, length = 3)
     private String currency = "USD";
 
+    /**
+     * The change order this payment settles, when it settles one.
+     *
+     * <p>Null for every other payment. Without it, two change orders on one job cannot be told
+     * apart — so an unpaid second one looks settled by the first, and the same one can be billed
+     * twice.
+     */
+    @Column(name = "change_order_id")
+    private UUID changeOrderId;
+
     @Column(name = "stripe_payment_intent")
     private String stripePaymentIntent;
 

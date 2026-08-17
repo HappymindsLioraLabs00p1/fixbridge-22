@@ -144,6 +144,24 @@ export function useStartWork(jobId: string) {
   });
 }
 
+/**
+ * Pay for extra work already approved.
+ *
+ * Separate from approval on purpose: approving lets the contractor carry on immediately rather than
+ * standing in the customer's home waiting on a card form, and the charge follows.
+ */
+export function useChangeOrderCheckout(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (changeOrderId: string) =>
+      api.post<CheckoutView>(`/api/change-orders/${changeOrderId}/checkout`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["change-orders", jobId] });
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+    },
+  });
+}
+
 export function useProposals(jobId: string) {
   return useQuery({
     queryKey: ["proposals", jobId],

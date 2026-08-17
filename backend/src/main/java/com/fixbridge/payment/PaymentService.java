@@ -133,6 +133,55 @@ public class PaymentService {
     }
 
     /**
+     * Customer pays for extra work they have already approved.
+     *
+     * <p>Approving a change order agreed the price; this collects it. Until now nothing did — the
+     * code promised a final invoice that was never built, so the platform paid the contractor for
+     * the additional work and charged the customer nothing.
+     *
+     * <p>The amount is the added retail held on the change order, set by an admin from the pricing
+     * rules. It is never taken from the request: a client-supplied figure would let the customer
+     * name their own price.
+     */
+    @Transactional
+    public PaymentDtos.CheckoutView createChangeOrderCheckout(AuthUser user, UUID changeOrderId) {
+        com.fixbridge.job.ChangeOrder co = changeOrders.findById(changeOrderId)
+                .orElseThrow(() -> ApiException.notFound("Change order"));
+        Job job = jobService.requireJob(co.getJobId());
+        requireOwner(job, user);
+
+        if (co.getStatus() != com.fixbridge.common.enums.ProposalStatus.approved) {
+            throw ApiException.conflict("This extra work has not been approved yet");
+        }
+        if (co.getAddedRetailCents() <= 0) {
+            throw ApiException.conflict("This extra work has not been priced yet");
+        }
+
+        // Already charged, or a checkout is already open. Return it rather than opening a second —
+        // a customer must never be billed twice for the same extra work.
+        var existing = payments.findByJobId(job.getId()).stream()
+                .filter(p -> changeOrderId.equals(p.getChangeOrderId()))
+                .filter(p -> p.getStatus() == PaymentStatus.requires_payment
+                        || p.getStatus() == PaymentStatus.processing
+                        || p.getStatus() == PaymentStatus.succeeded)
+                .findFirst();
+        if (existing.isPresent()) {
+            Payment p = existing.get();
+            return new PaymentDtos.CheckoutView(p.getStripeCheckoutSession(), null,
+                    p.getAmountCents(), "USD");
+        }
+
+        Payment payment = newPayment(job.getId(), user.id(), PaymentType.progress, co.getAddedRetailCents());
+        payment.setChangeOrderId(changeOrderId);
+        StripeClient.CheckoutSession session = stripe.createCheckout(
+                PaymentType.progress, co.getAddedRetailCents(), "USD", payment.getId().toString());
+        payment.setStripeCheckoutSession(session.sessionId());
+        payments.save(payment);
+        return new PaymentDtos.CheckoutView(session.sessionId(), session.url(),
+                co.getAddedRetailCents(), "USD");
+    }
+
+    /**
      * Marks a checkout as paid and advances the job. Called only from the verified, idempotent webhook
      * handler — never from a client-supplied amount.
      */
@@ -157,8 +206,17 @@ public class PaymentService {
                 dispatchQuietly(job.getId());
             }
             case managed_repair, deposit, final_payment, progress -> {
-                jobService.transition(job, JobStatus.approved, null);
-                jobService.transition(job, JobStatus.scheduled, null);
+                // Extra work is paid for while the job is already under way. Sending it through the
+                // booking transition would push a job the contractor is standing in the middle of
+                // back to "scheduled" — the customer would see work they are watching happen
+                // reported as not yet started.
+                if (payment.getChangeOrderId() != null) {
+                    log.info("Change order {} paid for job {} — job left at {}",
+                            payment.getChangeOrderId(), job.getId(), job.getStatus());
+                } else {
+                    jobService.transition(job, JobStatus.approved, null);
+                    jobService.transition(job, JobStatus.scheduled, null);
+                }
             }
             default -> log.info("No job transition for payment type {}", payment.getType());
         }

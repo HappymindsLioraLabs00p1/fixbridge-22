@@ -9,6 +9,7 @@ import {
   useApproveChangeOrder,
   useApproveProposal,
   useChangeOrders,
+  useChangeOrderCheckout,
   useCompletion,
   useConfirmCompletion,
   useDispatchCheckout,
@@ -352,6 +353,8 @@ function PhotoSet({ label, urls }: { label: string; urls: string[] }) {
 function ChangeOrdersCard({ jobId }: { jobId: string }) {
   const { data: changeOrders } = useChangeOrders(jobId);
   const approve = useApproveChangeOrder(jobId);
+  const payExtra = useChangeOrderCheckout(jobId);
+  const [extraCheckout, setExtraCheckout] = useState<CheckoutView | null>(null);
   if (!changeOrders || changeOrders.length === 0) return null;
   return (
     <Card>
@@ -373,11 +376,32 @@ function ChangeOrdersCard({ jobId }: { jobId: string }) {
               <Button size="sm" disabled={approve.isPending} onClick={() => approve.mutate(co.id)}>
                 {approve.isPending ? "Approving…" : "Approve added work"}
               </Button>
+            ) : co.status === "approved" ? (
+              // Approving let the contractor carry on; this collects the agreed amount. Until it
+              // existed the extra work was done, the contractor was paid for it, and nobody billed
+              // the customer.
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">You approved this extra work.</p>
+                <Button
+                  size="sm"
+                  disabled={payExtra.isPending}
+                  onClick={() => payExtra.mutate(co.id, { onSuccess: setExtraCheckout })}
+                >
+                  {payExtra.isPending ? "Preparing checkout…" : `Pay ${formatCents(co.addedRetailCents)}`}
+                </Button>
+              </div>
             ) : (
               <p className="text-sm font-medium capitalize text-muted-foreground">{co.status}</p>
             )}
           </div>
         ))}
+        {extraCheckout && (
+          <CheckoutNotice
+            checkout={extraCheckout}
+            jobId={jobId}
+            onSettled={() => setExtraCheckout(null)}
+          />
+        )}
       </CardContent>
     </Card>
   );

@@ -19,9 +19,12 @@ import java.util.UUID;
 public class ChangeOrderController {
 
     private final ChangeOrderService changeOrderService;
+    private final com.fixbridge.payment.PaymentService paymentService;
 
-    public ChangeOrderController(ChangeOrderService changeOrderService) {
+    public ChangeOrderController(ChangeOrderService changeOrderService,
+                                 com.fixbridge.payment.PaymentService paymentService) {
         this.changeOrderService = changeOrderService;
+        this.paymentService = paymentService;
     }
 
     /** Customer-safe change orders for a job (added retail only — never the net). */
@@ -34,5 +37,18 @@ public class ChangeOrderController {
     @PostMapping("/change-orders/{changeOrderId}/approve")
     public ChangeOrderDtos.CustomerView approve(@PathVariable UUID changeOrderId) {
         return changeOrderService.approve(SecurityUtil.currentUser(), changeOrderId);
+    }
+
+    /**
+     * Pay for extra work already approved.
+     *
+     * <p>Separate from approval on purpose. Approving lets the contractor carry on immediately —
+     * they are standing in the customer's home and should not be waiting on a card form — and the
+     * charge follows. Returns the existing checkout if one is already open, so a retry never opens
+     * a second.
+     */
+    @PostMapping("/change-orders/{changeOrderId}/checkout")
+    public com.fixbridge.payment.dto.PaymentDtos.CheckoutView checkout(@PathVariable UUID changeOrderId) {
+        return paymentService.createChangeOrderCheckout(SecurityUtil.currentUser(), changeOrderId);
     }
 }
