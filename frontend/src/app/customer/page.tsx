@@ -9,32 +9,102 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobStatusBadge } from "@/components/status-badge";
+import { HeroSearch } from "@/components/hero-search";
+import { ServiceTiles } from "@/components/service-tiles";
+import { TrustStrip } from "@/components/trust-strip";
+import { JobProgress, progressCaption } from "@/components/job-progress";
+import type { JobSummary } from "@/lib/types";
 
+/**
+ * The customer's home.
+ *
+ * <p>Ordered by what someone opening the app is most likely to want: report something new, check
+ * the job already running, then everything else. Properties used to sit at the top because the
+ * system needs one before a job can exist — but that is the platform's constraint, not the
+ * homeowner's priority, so it now sits below the work.
+ */
 export default function CustomerDashboard() {
   return (
     <RequireRole role="customer">
-      <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-        {/* Stacks on a phone — side by side the heading wrapped underneath the button. */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Your properties &amp; requests</h1>
-            <p className="text-sm text-muted-foreground">Report an issue and track it to completion.</p>
-          </div>
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-            <Link href="/customer/assistant">
-              <Button variant="outline" className="w-full sm:w-auto">Ask the assistant</Button>
-            </Link>
-            <Link href="/customer/report">
-              <Button className="w-full sm:w-auto">Report an issue</Button>
+      <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:py-8">
+        <HeroSearch />
+
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Popular services</h2>
+            <Link href="/services" className="text-sm font-medium text-primary hover:underline">
+              View all
             </Link>
           </div>
-        </div>
-        <div className="grid gap-8 lg:grid-cols-2">
+          <ServiceTiles />
+        </section>
+
+        <ActiveJobs />
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Why {`FixBridge`}</h2>
+          <TrustStrip />
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-2">
           <PropertiesCard />
-          <JobsCard />
+          <AllRequestsCard />
         </div>
       </div>
     </RequireRole>
+  );
+}
+
+/** Jobs currently in flight, shown the way the customer thinks about them: what's happening now. */
+function ActiveJobs() {
+  const { data: jobs, isLoading } = useMyJobs();
+
+  const live = (jobs ?? []).filter(
+    (j) => !["draft", "closed", "canceled", "refunded", "paid_out"].includes(j.status),
+  );
+
+  if (isLoading) {
+    return <div className="h-40 animate-pulse rounded-xl border bg-muted/40" />;
+  }
+  if (live.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Your bookings</h2>
+        <span className="text-sm text-muted-foreground">{live.length} active</span>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {live.map((job) => (
+          <BookingCard key={job.id} job={job} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BookingCard({ job }: { job: JobSummary }) {
+  // Short, stable, and the same reference the contractor sees on their own card.
+  const reference = job.id.slice(0, 8).toUpperCase();
+
+  return (
+    <Link
+      href={`/customer/jobs/${job.id}`}
+      className="block rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground tabular">#{reference}</p>
+          <p className="truncate font-semibold">{job.title ?? "Reported issue"}</p>
+        </div>
+        <JobStatusBadge status={job.status} />
+      </div>
+
+      <p className="mt-3 text-sm text-muted-foreground">{progressCaption(job.status)}</p>
+      <div className="mt-3">
+        <JobProgress status={job.status} />
+      </div>
+    </Link>
   );
 }
 
@@ -57,7 +127,7 @@ function PropertiesCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Properties</CardTitle>
+        <CardTitle>Your properties</CardTitle>
         <CardDescription>Add a property before reporting an issue.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -66,10 +136,10 @@ function PropertiesCard() {
         ) : properties && properties.length > 0 ? (
           <ul className="space-y-2">
             {properties.map((p) => (
-              <li key={p.id} className="rounded-md border p-3 text-sm">
+              <li key={p.id} className="rounded-lg border p-3 text-sm">
                 <div className="font-medium">{p.line1}</div>
                 <div className="text-muted-foreground">
-                  {[p.city, p.state, p.postalCode].filter(Boolean).join(", ")}
+                  {[p.city, p.state, p.postalCode].filter(Boolean).join(", ") || "Address incomplete"}
                 </div>
               </li>
             ))}
@@ -97,13 +167,14 @@ function PropertiesCard() {
   );
 }
 
-function JobsCard() {
+/** The full history, including the finished ones the bookings section deliberately leaves out. */
+function AllRequestsCard() {
   const { data: jobs, isLoading } = useMyJobs();
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Requests</CardTitle>
-        <CardDescription>Your reported issues and their status.</CardDescription>
+        <CardTitle>All requests</CardTitle>
+        <CardDescription>Everything you&apos;ve reported, newest first.</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -114,16 +185,21 @@ function JobsCard() {
               <li key={j.id}>
                 <Link
                   href={`/customer/jobs/${j.id}`}
-                  className="flex items-center justify-between rounded-md border p-3 text-sm hover:bg-muted"
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted"
                 >
-                  <span className="font-medium">{j.title ?? "Issue"}</span>
+                  <span className="min-w-0 truncate font-medium">{j.title ?? "Issue"}</span>
                   <JobStatusBadge status={j.status} />
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">No requests yet.</p>
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <p className="text-sm font-medium">Nothing reported yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Describe a problem above and we&apos;ll take it from there.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

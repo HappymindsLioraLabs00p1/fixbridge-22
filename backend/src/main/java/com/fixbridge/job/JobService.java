@@ -38,12 +38,18 @@ public class JobService {
     private final com.fixbridge.storage.StorageService storage;
     private final CompletionReportRepository completionReports;
     private final ChangeOrderRepository changeOrders;
+    private final com.fixbridge.contractor.ContractorRepository contractors;
+    private final com.fixbridge.contractor.ContractorReviewRepository contractorReviews;
 
     public JobService(JobRepository jobs, PropertyRepository properties, AiService aiService,
                       AiAssessmentRepository assessments, PricingEngine pricingEngine,
                       JobPricingRepository jobPricing, JobStatusHistoryRepository statusHistory,
                       JobMediaRepository jobMedia, com.fixbridge.storage.StorageService storage,
-                      CompletionReportRepository completionReports, ChangeOrderRepository changeOrders) {
+                      CompletionReportRepository completionReports, ChangeOrderRepository changeOrders,
+                      com.fixbridge.contractor.ContractorRepository contractors,
+                      com.fixbridge.contractor.ContractorReviewRepository contractorReviews) {
+        this.contractors = contractors;
+        this.contractorReviews = contractorReviews;
         this.jobs = jobs;
         this.properties = properties;
         this.aiService = aiService;
@@ -115,6 +121,54 @@ public class JobService {
         AiAssessmentEntity a = assessments.findFirstByJobIdOrderByCreatedAtDesc(jobId).orElse(null);
         JobPricing p = jobPricing.findByJobId(jobId).orElse(null);
         return toDetailFromStored(job, a, p);
+    }
+
+
+    /**
+     * Who is coming, if anyone has been assigned yet.
+     *
+     * <p>Returns null for most of a job's life, and the UI is expected to say so rather than imply a
+     * professional exists. Read from the contractor record already linked by
+     * {@code job.assignedContractorId} — no contractor data is copied onto the job.
+     */
+    private JobDtos.AssignedProfessionalView assignedProfessional(Job job) {
+        if (job.getAssignedContractorId() == null) return null;
+        com.fixbridge.contractor.Contractor c =
+                contractors.findById(job.getAssignedContractorId()).orElse(null);
+        if (c == null) return null;
+
+        var reviews = contractorReviews.findByContractorId(c.getId());
+        // Null, not zero: a professional nobody has reviewed is unrated, not badly rated.
+        Double average = reviews.isEmpty() ? null
+                : Math.round(reviews.stream()
+                        .mapToInt(com.fixbridge.contractor.ContractorReview::getRating)
+                        .average().orElse(0) * 10) / 10.0;
+
+        return new JobDtos.AssignedProfessionalView(
+                c.getId(),
+                c.getBusinessName(),
+                maskPhone(c.getContactPhone()),
+                c.getStatus() == com.fixbridge.common.enums.ContractorStatus.approved,
+                average,
+                reviews.size());
+    }
+
+    /**
+     * Last four digits only, masked on the server.
+     *
+     * <p>Masking in the browser would still send the full number over the wire, into every cache and
+     * network log — hidden from the reader, not from the client. A customer should be able to
+     * recognise the number calling them without the platform handing out a tradesperson's personal
+     * line, which once given cannot be taken back and moves the relationship off the platform.
+     *
+     * <p>There is no in-app messaging to offer instead, so this identifies rather than enables: it is
+     * deliberately not dialable.
+     */
+    private static String maskPhone(String phone) {
+        if (phone == null) return null;
+        String digits = phone.replaceAll("\\D", "");
+        if (digits.length() < 4) return null;
+        return "\u2022\u2022\u2022 \u2022\u2022\u2022 " + digits.substring(digits.length() - 4);
     }
 
     // ---- internals ----
@@ -234,7 +288,8 @@ public class JobService {
                 estimate.priceAvailable(), estimate.retailLowCents(), estimate.retailHighCents(),
                 estimate.message(), estimate.disclaimer());
         return new JobDtos.JobDetailView(job.getId(), job.getStatus(), job.getTitle(), job.getDescription(),
-                job.getPreferredTime(), av, ev, mediaViews(job.getId()), job.getCreatedAt());
+                job.getPreferredTime(), av, ev, mediaViews(job.getId()), job.getCreatedAt(),
+                assignedProfessional(job));
     }
 
     private JobDtos.JobDetailView toDetailFromStored(Job job, AiAssessmentEntity a, JobPricing p) {
@@ -255,7 +310,8 @@ public class JobService {
                     "A verified professional will confirm pricing after assessing on site.");
         }
         return new JobDtos.JobDetailView(job.getId(), job.getStatus(), job.getTitle(), job.getDescription(),
-                job.getPreferredTime(), av, ev, mediaViews(job.getId()), job.getCreatedAt());
+                job.getPreferredTime(), av, ev, mediaViews(job.getId()), job.getCreatedAt(),
+                assignedProfessional(job));
     }
 
     private List<JobDtos.MediaView> mediaViews(UUID jobId) {

@@ -72,7 +72,36 @@ public final class JobDtos {
             AssessmentView assessment,
             EstimateView estimate,
             List<MediaView> media,
-            Instant createdAt
+            Instant createdAt,
+            /**
+             * Null until a contractor is actually assigned — which is most of a job's life. Appended
+             * last and nullable so existing clients that ignore it are unaffected.
+             */
+            AssignedProfessionalView professional
+    ) {}
+
+    /**
+     * The professional assigned to a job, as the customer may see them.
+     *
+     * <p>Deliberately not the contractor record. A customer needs to know who is coming and that
+     * they are vetted; they have no business with the contractor's net bid, their email, their
+     * payout account or their address, all of which sit on {@link com.fixbridge.contractor.Contractor}.
+     *
+     * <p>{@code maskedPhone} is masked <em>here</em>, on the server, rather than in the browser.
+     * Masking in the UI would still send the full number over the wire and put it in every browser
+     * cache and network log — the number would be hidden from the reader, not from the client. Only
+     * the last four digits ever leave the server.
+     *
+     * <p>{@code rating} is null rather than zero for a professional nobody has reviewed yet: no
+     * history is not the same as bad history.
+     */
+    public record AssignedProfessionalView(
+            UUID contractorId,
+            String businessName,
+            String maskedPhone,
+            boolean verified,
+            Double rating,
+            long reviewCount
     ) {}
 
     public record JobSummaryView(UUID id, JobStatus status, String title, Instant createdAt) {}

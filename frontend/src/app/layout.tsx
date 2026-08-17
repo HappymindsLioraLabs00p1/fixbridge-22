@@ -1,16 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode, CSSProperties } from "react";
-import { Barlow_Condensed } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { brand } from "@/config/brand";
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
+import { MobileNav } from "@/components/mobile-nav";
 import { ServiceWorkerRegistration } from "@/components/service-worker";
 
-// Heavy condensed display type, matching the FixBridge brand site.
-const display = Barlow_Condensed({
+// Two faces doing two jobs. Inter runs the interface — it was drawn for screens at small sizes,
+// which is most of this product: labels, figures, status. Poppins carries headings and the
+// wordmark, where its geometry reads as approachable rather than corporate.
+const body = Inter({
   subsets: ["latin"],
-  weight: ["600", "700", "900"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const display = Poppins({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
   display: "swap",
 });
@@ -37,7 +46,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B2447",
+  // Matches --navy, so the browser and iOS chrome continue the header rather than framing it.
+  themeColor: "#071A3D",
   width: "device-width",
   initialScale: 1,
   // Room for the notch and the home indicator when running full-screen.
@@ -48,11 +58,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   // Inject the brand primary color as a CSS variable — the whole palette derives from brand config.
   const brandStyle = { ["--brand-primary"]: brand.primaryColor } as CSSProperties;
   return (
-    <html lang="en" className={`h-full ${display.variable}`}>
+    <html lang="en" className={`h-full ${body.variable} ${display.variable}`}>
       <body className="flex min-h-full flex-col" style={brandStyle}>
         <Providers>
           <SiteHeader />
-          <main className="w-full flex-1">{children}</main>
+          {/* Bottom padding clears the fixed mobile bar so the last control is never under it. */}
+          <main className="w-full flex-1 pb-16 sm:pb-0">{children}</main>
+          <MobileNav />
           <ServiceWorkerRegistration />
         </Providers>
       </body>

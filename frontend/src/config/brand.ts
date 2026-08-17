@@ -11,7 +11,7 @@ export const brand = {
   supportEmail: process.env.NEXT_PUBLIC_BRAND_SUPPORT_EMAIL ?? "support@example.com",
   domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN ?? "example.com",
   // Coral accent, matching the FixBridge brand.
-  primaryColor: process.env.NEXT_PUBLIC_BRAND_PRIMARY_COLOR ?? "#FF4D1C",
+  primaryColor: process.env.NEXT_PUBLIC_BRAND_PRIMARY_COLOR ?? "#FF6B00",
   // Split wordmark: "FIX" (ink) + "BRIDGE" (accent) + "AI" badge.
   wordmark: process.env.NEXT_PUBLIC_BRAND_NAME ?? "FixBridge",
 

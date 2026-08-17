@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import { RequireRole } from "@/components/require-auth";
 import { ApiError } from "@/lib/api";
 import {
@@ -20,8 +21,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobStatusBadge, UrgencyBadge } from "@/components/status-badge";
 import { RateContractor } from "@/components/rate-contractor";
+import { JobProgress, progressCaption } from "@/components/job-progress";
+import { ProfessionalCard } from "@/components/professional-card";
 import { formatCents, formatRange } from "@/lib/utils";
 import type { CheckoutView } from "@/lib/types";
+
+/** The stepper only means anything once a contractor is in the picture. */
+function stepVisible(status: string): boolean {
+  return ![
+    "draft", "ai_review_complete", "awaiting_service_payment", "paid_for_dispatch",
+    "awaiting_contractor", "canceled", "refunded",
+  ].includes(status);
+}
 
 const SERVICE_OPTIONS = [
   { value: "weekday_scheduled", label: "Scheduled weekday visit" },
@@ -47,10 +58,42 @@ export default function JobDetailPage() {
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <>
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">{job.title ?? "Request"}</h1>
+            {/* Back first: this screen is reached from a card, and on a phone the browser's own
+                back gesture is the only other way out. */}
+            <Link
+              href="/customer"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Your bookings
+            </Link>
+
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground tabular">
+                  #{jobId.slice(0, 8).toUpperCase()}
+                </p>
+                <h1 className="text-2xl font-semibold">{job.title ?? "Request"}</h1>
+              </div>
               <JobStatusBadge status={job.status} />
             </div>
+
+            {/* Where the job has got to, in the four steps that mean something to a homeowner. */}
+            {stepVisible(job.status) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{progressCaption(job.status)}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <JobProgress status={job.status} />
+                </CardContent>
+              </Card>
+            )}
+
+            {job.professional && <ProfessionalCard professional={job.professional} />}
 
             {job.assessment && (
               <Card>

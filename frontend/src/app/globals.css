@@ -1,33 +1,61 @@
 @import "tailwindcss";
 
 /*
- * FixBridge design tokens — matched to the brand site (fixbridge.netlify.app):
- * cream canvas, near-black ink, coral accent, condensed display type.
+ * FixBridge design tokens.
+ *
+ * Two colours carry the brand and they do different jobs. Navy is structure — headers, navigation,
+ * the surfaces that frame everything else — and orange is action: the primary button, the active
+ * state, the thing to press. Keeping that split is what stops the interface reading as decorated
+ * rather than designed, so orange is deliberately scarce.
+ *
+ * Every component styles through these variables rather than literal colours, which is why the
+ * palette can change here without touching a single component.
+ *
  * --primary/--ring derive from --brand-primary (injected from src/config/brand.ts).
  */
 :root {
-  --background: #f8f6f2;
-  --foreground: #0a0a0a;
+  /* Brand */
+  --navy: #071a3d;
+  --navy-foreground: #ffffff;
+  /* One step lighter than navy, for layering a surface on a navy ground without a border. */
+  --navy-soft: #12294f;
+
+  /* Canvas and surfaces */
+  --background: #f7f9fc;
+  --foreground: #172033;
   --card: #ffffff;
-  --card-foreground: #0a0a0a;
+  --card-foreground: #172033;
   --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: var(--brand-primary, #ff4d1c);
+  --popover-foreground: #172033;
+
+  /* Action */
+  --primary: var(--brand-primary, #ff6b00);
   --primary-foreground: #ffffff;
-  --secondary: #efece6;
-  --secondary-foreground: #0a0a0a;
-  --muted: #efece6;
-  --muted-foreground: #6b6560;
-  --accent: #fdeee9;
-  --accent-foreground: #0a0a0a;
+  /* Orange at low opacity for tinted backgrounds — a hint of the accent, not a second accent. */
+  --primary-subtle: #fff2e8;
+
+  --secondary: #eef2f8;
+  --secondary-foreground: #172033;
+  --muted: #eef2f8;
+  --muted-foreground: #687386;
+  --accent: #fff2e8;
+  --accent-foreground: #172033;
+
+  /* Status. Separate from the accent on purpose: a warning that borrows the brand orange is
+     indistinguishable from a call to action. */
+  --success: #0f7a4a;
+  --success-subtle: #e6f4ed;
+  --warning: #b45309;
+  --warning-subtle: #fdf3e4;
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
-  --success: #157a4a;
-  --warning: #b45309;
-  --border: #e4ded4;
-  --input: #e4ded4;
-  --ring: var(--brand-primary, #ff4d1c);
-  --radius: 0.5rem;
+  --destructive-subtle: #fdeaea;
+
+  /* Lines and focus */
+  --border: #dfe5ee;
+  --input: #dfe5ee;
+  --ring: var(--brand-primary, #ff6b00);
+  --radius: 0.625rem;
 }
 
 @theme inline {
@@ -48,7 +76,14 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
   --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-navy: var(--navy);
+  --color-navy-foreground: var(--navy-foreground);
+  --color-navy-soft: var(--navy-soft);
+  --color-primary-subtle: var(--primary-subtle);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -63,15 +98,34 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Heavy condensed display type for headings/wordmark, matching the brand site. */
+/* Display face for headings and the wordmark. */
 .font-display {
-  font-family: var(--font-display, "Barlow Condensed"), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display, "Poppins"), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/*
+ * Headings take the display face automatically, so a new page inherits the hierarchy instead of
+ * re-declaring it. Tighter tracking as the size grows — large type set at body tracking reads loose.
+ */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display, "Poppins"), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* Figures line up in columns all over this product — job references, money, counts. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Edge-to-edge marquee used on the landing page. */

@@ -80,6 +80,21 @@ export interface MediaView {
   url: string;
 }
 
+/**
+ * The professional assigned to a job, as the customer may see them.
+ *
+ * `maskedPhone` arrives already masked from the server — the full number never reaches the client.
+ * `rating` is null rather than 0 when nobody has reviewed them yet.
+ */
+export interface AssignedProfessional {
+  contractorId: string;
+  businessName: string;
+  maskedPhone: string | null;
+  verified: boolean;
+  rating: number | null;
+  reviewCount: number;
+}
+
 export interface JobDetail {
   id: string;
   status: JobStatus;
@@ -90,6 +105,8 @@ export interface JobDetail {
   estimate: EstimateView | null;
   media: MediaView[];
   createdAt: string;
+  /** Null until a contractor is actually assigned, which is most of a job's life. */
+  professional: AssignedProfessional | null;
 }
 
 export interface UploadTarget {
