@@ -6,9 +6,12 @@
 # the final URLs). Any equivalent host works — Railway, Fly.io, Koyeb, or the GCP Terraform in
 # infra/terraform. Nothing here is Render-specific except the file format.
 
-# Kept declared but no longer wired to the service, which now points at an external Postgres via the
-# dashboard-set DB_* variables. Deleting this block would ask Render to DESTROY the database, so it
-# stays until you remove it deliberately from the dashboard once the new database is proven.
+# Kept declared but no longer wired to anything: the service points at Neon via the DB_* variables
+# above. This database holds none of the application's data.
+#
+# Deleting this block would ask Render to DESTROY the database, so it stays until you remove it
+# deliberately from the dashboard once Neon is proven in production. Left in place it costs nothing
+# on the free plan and keeps a rollback available.
 databases:
   - name: fixbridge-postgres
     databaseName: fixbridge
@@ -59,25 +62,33 @@ services:
     healthCheckPath: /actuator/health
     plan: free
     envVars:
-      # --- Database -------------------------------------------------------------------------
-      # Set in the dashboard, NOT wired to a Render database. These were previously bound with
-      # `fromDatabase`, which made them blueprint-managed — so pointing the app at an external
-      # Postgres (Neon, Supabase, Cloud SQL) was silently reverted on every sync.
+      # --- Database: Neon ---------------------------------------------------------------------
+      # Deliberately NOT wired to the Render `fixbridge-postgres` block below. These were once bound
+      # with `fromDatabase`, which made them blueprint-managed — so pointing the app at an external
+      # Postgres was silently reverted on every sync.
       #
-      # Spring assembles the JDBC URL from these parts (see application.yml). For a hosted database
-      # DB_PARAMS must carry `?sslmode=require`; leave out libpq-only options such as
-      # channel_binding, which the JDBC driver does not understand.
+      # Everything except the password is declared here rather than left to the dashboard, so a
+      # redeploy cannot quietly land on a different database than the one holding the data. None of
+      # it is secret on its own: without the password these four values open nothing.
+      #
+      # Spring assembles the JDBC URL from these parts (see application.yml). DB_PARAMS carries
+      # `?sslmode=require` and nothing else — Neon's own connection string appends
+      # `channel_binding=require`, which is a libpq option the JDBC driver does not understand and
+      # which fails the service at startup.
       - key: DB_HOST
-        sync: false
+        value: ep-holy-waterfall-ax7qkz0z-pooler.c-4.us-east-2.aws.neon.tech
       - key: DB_PORT
-        sync: false
+        value: "5432"
       - key: DB_NAME
-        sync: false
+        value: neondb
       - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
+        value: neondb_owner
       - key: DB_PARAMS
+        value: "?sslmode=require"
+      # The one value that never enters the repository. Set it in the Render dashboard, and set the
+      # ROTATED password — the original is in this repo's history at 33784d6 and must be treated as
+      # compromised.
+      - key: DB_PASSWORD
         sync: false
 
       # --- Python AI service ------------------------------------------------------------
