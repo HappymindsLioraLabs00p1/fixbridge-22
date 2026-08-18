@@ -173,7 +173,21 @@ h3 {
   100% { transform: scale(1) rotate(180deg); opacity: 0.9; }
 }
 .fb-mascot-move { transition: transform 0.85s cubic-bezier(0.5, 0, 0.2, 1); }
+
+/* Mascot character detail: a slow wink and a brief highlight on the chest logo. Both are long-cycle
+   and mostly idle — a mascot that winks constantly reads as a glitch rather than a personality. */
+@keyframes fb-wink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%, 97% { transform: scaleY(0.1); }
+}
+.fb-wink { animation: fb-wink 7s ease-in-out infinite; }
+@keyframes fb-logo-glow {
+  0%, 88%, 100% { filter: none; }
+  94% { filter: drop-shadow(0 0 4px rgba(255, 107, 0, 0.9)); }
+}
+.fb-logo-glow { animation: fb-logo-glow 7s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .fb-ready, .fb-bob, .fb-wave { animation: none; }
+  .fb-ready, .fb-bob, .fb-wave, .fb-wink, .fb-logo-glow { animation: none; }
   .fb-mascot-move { transition: none; }
 }

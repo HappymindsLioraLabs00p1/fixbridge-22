@@ -16,14 +16,20 @@ export default function manifest(): MetadataRoute.Manifest {
     // Opens without the browser address bar, so it reads as an app rather than a bookmark.
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0B2447",
-    theme_color: "#0B2447",
+    // Matches the app rather than the icon card: theme_color tints the OS chrome and is the navy of
+    // the site header (the same value as metadata.themeColor in layout.tsx), while background_color
+    // is the page background the launch screen hands over to.
+    background_color: "#f7f9fc",
+    theme_color: "#071a3d",
     categories: ["business", "productivity", "utilities"],
     icons: [
-      // Maskable so Android can crop it to the device's icon shape without clipping the wordmark.
+      // Vector first — anything that can use it gets a crisp icon at any size. The PNGs below are
+      // generated from this same file, so the mark cannot drift between formats.
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      // Composed differently from the icons above: full-bleed navy with the mark inset to the safe
+      // zone, so Android's crop to a circle or squircle cannot shave the wordmark off.
       { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [

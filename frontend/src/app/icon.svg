@@ -1,7 +1,87 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="108" fill="#0B2447"/>
-  <g font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="900" text-anchor="middle">
-    <text x="256" y="252" font-size="210" fill="#ffffff" letter-spacing="6">FIX</text>
-    <text x="256" y="392" font-size="120" fill="#ffffff" letter-spacing="3">BRIDGE <tspan fill="#FF4D1C">AI</tspan></text>
+<!--
+  FixBridge app icon — house + bridge + wrench, split orange/white down the centre line.
+
+  Drawn as flat vector rather than traced from the 3D render on purpose: this file is the favicon and
+  the source every PNG size is generated from, and the render's bevels and drop shadows turn to mush
+  below about 128px. Flat shapes stay legible at 32px and scale to 512 without resampling.
+
+  The centre split is done with two clip paths over a single description of the mark, so the house and
+  bridge cannot drift apart between halves. The window, wrench and type sit outside that split — they
+  are one colour each and cross the centre line, which is what stops the icon reading as two halves.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FixBridge">
+  <title>FixBridge</title>
+
+  <defs>
+    <clipPath id="fb-left"><rect x="0" y="0" width="256" height="512"/></clipPath>
+    <clipPath id="fb-right"><rect x="256" y="0" width="256" height="512"/></clipPath>
+
+    <!-- The halved part of the mark, described once. -->
+    <g id="fb-mark">
+      <!-- chimney, tucked under the roof stroke so the roofline stays unbroken -->
+      <rect x="348" y="92" width="32" height="78" rx="3" />
+
+      <!-- house: left wall, roof, right wall -->
+      <path d="M116 352V182L256 56l140 126v170"
+            fill="none" stroke="currentColor" stroke-width="26" stroke-linejoin="miter" />
+
+      <!-- bridge: top rail, deck, balusters -->
+      <g fill="none" stroke="currentColor" stroke-linecap="butt">
+        <path d="M70 318Q256 210 442 318" stroke-width="12" />
+        <path d="M70 350Q256 242 442 350" stroke-width="20" />
+        <g stroke-width="10">
+          <path d="M100 302v32" /><path d="M152 281v32" /><path d="M204 268v32" />
+          <path d="M256 264v32" />
+          <path d="M308 268v32" /><path d="M360 281v32" /><path d="M412 302v32" />
+        </g>
+      </g>
+      <!-- abutments -->
+      <rect x="57" y="300" width="30" height="68" rx="3" />
+      <rect x="425" y="300" width="30" height="68" rx="3" />
+    </g>
+  </defs>
+
+  <!-- card -->
+  <rect width="512" height="512" rx="112" fill="#223b63"/>
+
+  <!-- the halved mark -->
+  <g clip-path="url(#fb-left)"  fill="#f97316" color="#f97316"><use href="#fb-mark"/></g>
+  <g clip-path="url(#fb-right)" fill="#ffffff" color="#ffffff"><use href="#fb-mark"/></g>
+
+  <!-- window: four panes, white on both sides of the centre line -->
+  <g fill="#ffffff">
+    <rect x="233" y="109" width="20" height="20" rx="3"/>
+    <rect x="260" y="109" width="20" height="20" rx="3"/>
+    <rect x="233" y="136" width="20" height="20" rx="3"/>
+    <rect x="260" y="136" width="20" height="20" rx="3"/>
   </g>
+
+  <!-- wrench, over the bridge and always whole. The jaw is cut wide enough to leave two clear
+       prongs — a narrow slot reads as a power symbol rather than a spanner. -->
+  <g fill="#f97316">
+    <circle cx="256" cy="214" r="46"/>
+    <rect x="238" y="214" width="36" height="116" rx="9"/>
+  </g>
+  <g fill="#223b63">
+    <circle cx="256" cy="214" r="23"/>
+    <!-- starts just above the ring (top edge y=168), not higher: any further up and this navy
+         rectangle bites into the bottom row of window panes sitting at y=136–156 -->
+    <rect x="233" y="160" width="46" height="54"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="256" y="428" text-anchor="middle"
+        font-family="'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-weight="900" font-size="62" letter-spacing="-1">
+    <tspan fill="#f97316">FIX</tspan><tspan fill="#ffffff">BRIDGE</tspan>
+  </text>
+
+  <!-- strapline, with a rule either side as in the brand lockup -->
+  <g stroke="#f97316" stroke-width="3" stroke-linecap="round">
+    <path d="M66 459h46"/>
+    <path d="M400 459h46"/>
+  </g>
+  <text x="256" y="466" text-anchor="middle"
+        font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="18" letter-spacing="2.5"
+        fill="#ffffff">AI REPAIR ASSISTANT</text>
 </svg>
