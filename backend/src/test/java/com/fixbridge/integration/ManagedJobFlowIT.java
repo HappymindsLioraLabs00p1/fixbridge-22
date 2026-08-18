@@ -146,6 +146,9 @@ class ManagedJobFlowIT {
         postText("/api/webhooks/stripe", stripeEvent("evt_r_" + rnd, "checkout.session.completed", rSession));
         assertThat(get("/api/jobs/" + jobId, custToken).get("status")).isEqualTo("scheduled");
 
+        // The contractor is on site: extra work can only be reported once the job is under way.
+        post("/api/contractor/jobs/" + jobId + "/start", null, conToken);
+
         // Change order mid-job: contractor documents extra work -> job pauses -> admin prices -> customer approves.
         post("/api/contractor/jobs/" + jobId + "/change-orders",
                 json("description", "Corroded shutoff valve behind wall", "addedNetCents", 20000, "addedDays", 1), conToken);
