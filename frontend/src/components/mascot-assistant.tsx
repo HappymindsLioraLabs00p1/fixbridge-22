@@ -173,7 +173,21 @@ export function MascotAssistant() {
           className={intro ? "" : "fb-pop"}
         >
           <div className={intro ? "fb-ready drop-shadow-2xl" : "fb-bob drop-shadow-xl"}>
-            <MascotSvg pose={pose} />
+            {intro ? (
+              <MascotSvg pose={pose} />
+            ) : (
+              // A cushion behind him in the corner. He is fixed, so the page scrolls underneath and he
+              // has no say in what ends up there — over the navy trust strip his navy overalls merged
+              // into the band and left a face and a glove floating. Moving him only changes which
+              // section he collides with; a backdrop is what actually makes him readable on any of
+              // them. It matches the speech bubble above, so the two read as one object.
+              //
+              // Deliberately not overflow-hidden: the waving arm and raised wrench breaking the circle
+              // is what keeps this from looking like a logo in a button.
+              <span className="block rounded-full border bg-card p-1 shadow-lg">
+                <MascotSvg pose={pose} />
+              </span>
+            )}
           </div>
         </button>
       </div>
