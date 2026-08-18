@@ -30,6 +30,27 @@ public class AuthController {
         return authService.login(req);
     }
 
+    // ---- Passwordless: one "Continue" flow for both sign-in and sign-up ----
+
+    /** Send a one-time code to a phone (SMS) or email. Same response whether or not an account exists. */
+    @PostMapping("/otp/send")
+    public AuthDtos.MessageResponse otpSend(@Valid @RequestBody AuthDtos.OtpSendRequest req) {
+        authService.otpSend(req);
+        return new AuthDtos.MessageResponse("Code sent");
+    }
+
+    /** Check the code: returns tokens for a known account, or a signup ticket for a new one. */
+    @PostMapping("/otp/verify")
+    public AuthDtos.OtpVerifyResponse otpVerify(@Valid @RequestBody AuthDtos.OtpVerifyRequest req) {
+        return authService.otpVerify(req);
+    }
+
+    /** Finish onboarding a verified newcomer: name (+ email when the proof was a phone) → account. */
+    @PostMapping("/otp/complete")
+    public AuthDtos.TokenResponse otpComplete(@Valid @RequestBody AuthDtos.OtpCompleteRequest req) {
+        return authService.otpComplete(req);
+    }
+
     @PostMapping("/refresh")
     public AuthDtos.TokenResponse refresh(@Valid @RequestBody AuthDtos.RefreshRequest req) {
         return authService.refresh(req);

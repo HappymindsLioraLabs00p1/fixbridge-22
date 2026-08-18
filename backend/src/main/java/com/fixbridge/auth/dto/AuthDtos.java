@@ -47,6 +47,33 @@ public final class AuthDtos {
     /** Deliberately generic so a caller cannot tell whether an account exists. */
     public record MessageResponse(String message) {}
 
+    // ---- Passwordless ("Continue with Phone / Email") ----
+
+    /** channel is "sms" or "email"; destination is the phone number or email address as typed. */
+    public record OtpSendRequest(@NotBlank String channel, @NotBlank String destination) {}
+
+    public record OtpVerifyRequest(
+            @NotBlank String channel,
+            @NotBlank String destination,
+            @NotBlank String code
+    ) {}
+
+    /**
+     * Either {@code tokens} (existing account — signed in) or {@code signupTicket} (new person —
+     * carry the ticket into onboarding). Exactly one is set.
+     */
+    public record OtpVerifyResponse(TokenResponse tokens, String signupTicket, boolean newUser) {}
+
+    /**
+     * Finish creating an account after an OTP proved the destination. Email is required when the
+     * proof was a phone (accounts are keyed by email); ignored when the proof WAS the email.
+     */
+    public record OtpCompleteRequest(
+            @NotBlank String signupTicket,
+            @NotBlank String fullName,
+            String email
+    ) {}
+
     public record UserView(UUID id, String email, String fullName, List<UserRole> roles) {}
 
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, UserView user) {

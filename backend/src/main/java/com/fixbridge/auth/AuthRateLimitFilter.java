@@ -39,7 +39,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final Set<String> GUARDED = Set.of(
             "/api/auth/login", "/api/auth/register",
             "/api/auth/forgot-password", "/api/auth/reset-password",
-            "/api/auth/change-password");
+            "/api/auth/change-password",
+            // OTP endpoints guess-limit per code too, but per-IP throttling here keeps one host from
+            // spraying send requests across many phone numbers (SMS costs money per message).
+            "/api/auth/otp/send", "/api/auth/otp/verify", "/api/auth/otp/complete");
 
     /**
      * Only FAILED attempts count. Someone signing in successfully — repeatedly, from a shared office

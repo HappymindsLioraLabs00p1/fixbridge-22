@@ -195,7 +195,7 @@ export function MascotAssistant() {
   );
 }
 
-type Pose = "intro" | "corner" | "cheer";
+export type Pose = "intro" | "corner" | "cheer";
 
 /**
  * The handyman himself, waist-up.
@@ -203,7 +203,7 @@ type Pose = "intro" | "corner" | "cheer";
  * The viewBox is deliberately unchanged from the previous mascot: the splash centring offsets above
  * were tuned against this width, so altering it would send him flying to the wrong place.
  */
-function MascotSvg({ pose }: { pose: Pose }) {
+export function MascotSvg({ pose }: { pose: Pose }) {
   const NAVY = "#071a3d";       // bib overalls — the brand's navy
   const NAVY_SOFT = "#12294f";  // polo shirt and sleeves, one step lighter so the bib reads separately
   const ORANGE = "#ff6b00";     // work gloves and the logo mark
