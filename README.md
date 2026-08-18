@@ -102,3 +102,4 @@ confidentiality at every step.
   signature is verified from the raw body and each event is processed exactly once (idempotency).
 - **Security.** Role-based access on every endpoint, private object storage with signed URLs, audit
   logs for every price/payout/refund/role change, secrets only in environment variables.
+# fixbridge-mobileapp
