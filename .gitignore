@@ -55,3 +55,8 @@ android/app-release-*.apk
 # Playwright artefacts — traces and screenshots are large and regenerated per run.
 frontend/playwright-report/
 frontend/test-results/
+
+# Nested working copies of other repositories — never part of this tree. Committing one
+# creates a gitlink (bare submodule pointer) that breaks every clone; it happened once.
+/fixbridge-2/
+/fixbridge-mobileapp/
